@@ -3,53 +3,37 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:DISTestKit"
-        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+        xmlns:lcs="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition></RowDefinition>
-            <RowDefinition></RowDefinition>
+            <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition></ColumnDefinition>
-            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
         </Grid.ColumnDefinitions>
         
-        <!--Cartesian chart for the DIS messages received, shows the type of DIS messages received over time-->
         <Grid Grid.Row="0" Grid.Column="0">
-            <lvc:CartesianChart Series="{Binding SeriesCollection}" LegendLocation="Right">
-                <lvc:CartesianChart.AxisX>
-                    <lvc:Axis Title="Time"
-                      LabelFormatter="{Binding XFormatter}"
-                      DisableAnimations="True"
-                      MinValue="{Binding MinX, Mode=OneWay}"
-                      MaxValue="{Binding MaxX, Mode=OneWay}" />
-                </lvc:CartesianChart.AxisX>
-
-                <lvc:CartesianChart.AxisY>
-                    <lvc:Axis Title="Messages/Sec" />
-                </lvc:CartesianChart.AxisY>
-            </lvc:CartesianChart>
+            <lvc:CartesianChart
+                Series="{Binding Series}"
+                XAxes="{Binding XAxes}"
+                YAxes="{Binding YAxes}"
+                AnimationsSpeed="00:00:00"
+                EasingFunction="{x:Null}" />
         </Grid>
 
         <!--DIS messages received-->
         <Grid Grid.Row="1" Grid.Column="0">
-            <DataGrid>
-
-            </DataGrid>
+            <DataGrid />
         </Grid>
         
         <!--Details of the selected DIS message-->
         <Grid Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" >
-            <DataGrid>
-                
-            </DataGrid>
+            <DataGrid />
         </Grid>
-
-
-
-
     </Grid>
 </Window>

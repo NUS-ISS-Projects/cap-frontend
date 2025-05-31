@@ -17,19 +17,26 @@ namespace DISTestKit
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly ChartViewModel _chartViewModel;
-        private readonly DISListenerViewModel _disReceiver;
+        private readonly ChartViewModel? _chartViewModel;
+        private readonly DISListenerViewModel? _disReceiver;
 
         public MainWindow()
         {
-            InitializeComponent();
+            try
+                {
+                    InitializeComponent();
 
-            _chartViewModel = new ChartViewModel();
-            DataContext = _chartViewModel;
+                    _chartViewModel = new ChartViewModel();
+                    DataContext = _chartViewModel;
 
-            _disReceiver = new DISListenerViewModel(_chartViewModel);
-            _disReceiver.Start();
-
+                    _disReceiver = new DISListenerViewModel(_chartViewModel);
+                    _disReceiver.Start();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString(), "Startup Exception");
+                    Application.Current.Shutdown();
+                }
 
         }
     }
