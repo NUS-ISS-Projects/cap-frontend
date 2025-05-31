@@ -1,20 +1,10 @@
-﻿using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+﻿using System.Windows;
 using DISTestKit.ViewModel;
+using Wpf.Ui.Appearance; 
+using Wpf.Ui.Controls;
 
 namespace DISTestKit
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private readonly ChartViewModel? _chartViewModel;
@@ -23,20 +13,20 @@ namespace DISTestKit
         public MainWindow()
         {
             try
-                {
-                    InitializeComponent();
+            {
+                InitializeComponent();
 
-                    _chartViewModel = new ChartViewModel();
-                    DataContext = _chartViewModel;
+                _chartViewModel = new ChartViewModel();
+                DataContext = _chartViewModel;
 
-                    _disReceiver = new DISListenerViewModel(_chartViewModel);
-                    _disReceiver.Start();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.ToString(), "Startup Exception");
-                    Application.Current.Shutdown();
-                }
+                _disReceiver = new DISListenerViewModel(_chartViewModel);
+                _disReceiver.Start();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.ToString(), "Startup Exception");
+                Application.Current.Shutdown();
+            }
 
         }
     }

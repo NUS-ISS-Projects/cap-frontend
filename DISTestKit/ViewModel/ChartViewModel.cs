@@ -24,18 +24,26 @@ namespace DISTestKit.ViewModel
 
          public ChartViewModel()
         {
-            // initialize the series collection
-            Series.Add(new LineSeries<DateTimePoint>
+             _chartValues = new ObservableCollection<DateTimePoint>();
+
+            Series = new ObservableCollection<ISeries>()
             {
-                Name        = "DIS Messages/sec",
-                Values      = _chartValues,
-                GeometrySize= 8,
-                Stroke      = new SolidColorPaint(SKColors.DodgerBlue, 2),
-                Fill        = null
-            });
+                new LineSeries<DateTimePoint>
+                {
+                    Name        = "DIS Messages/sec",
+                    Values      = _chartValues,
+                    GeometrySize= 8,
+                    Stroke      = new SolidColorPaint(SKColors.DodgerBlue, 2),
+                    Fill        = null
+                }
+            };
 
             // set up the axes
             var now = DateTime.Now;
+            _chartValues.Add(new DateTimePoint(now.AddSeconds(-2), 5));
+            _chartValues.Add(new DateTimePoint(now.AddSeconds(-1), 8));
+            _chartValues.Add(new DateTimePoint(now, 10));
+            
             XAxes = new[]
             {
                 new Axis
