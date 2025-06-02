@@ -130,12 +130,54 @@
 
         <!--DIS messages received-->
         <Grid Grid.Row="2" Grid.Column="0">
-            <DataGrid />
-        </Grid>
-        
-        <!--Details of the selected DIS message-->
-        <Grid Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" >
-            <DataGrid />
+            <DataGrid 
+                ItemsSource="{Binding Packets}"
+                AutoGenerateColumns="False"
+                CanUserAddRows="False"
+                IsReadOnly="True"
+                GridLinesVisibility="Horizontal"
+                HeadersVisibility="Column"
+                RowHeight="28"
+                ColumnHeaderHeight="30"
+                FontSize="12"
+                Margin="0,10,10,0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn
+                        Header="No"
+                        Binding="{Binding No}"
+                        Width="40" />
+
+                    <DataGridTextColumn
+                        Header="Time"
+                        Binding="{Binding Time, StringFormat=HH:mm:ss}"
+                        Width="80" />
+
+                    <DataGridTextColumn
+                        Header="Source"
+                        Binding="{Binding Source}"
+                        Width="120" />
+
+                    <DataGridTextColumn
+                        Header="Destination"
+                        Binding="{Binding Destination}"
+                        Width="120" />
+
+                    <DataGridTextColumn
+                        Header="Protocol"
+                        Binding="{Binding Protocol}"
+                        Width="80" />
+
+                    <DataGridTextColumn
+                        Header="Length"
+                        Binding="{Binding Length}"
+                        Width="60" />
+
+                    <DataGridTextColumn
+                        Header="Info"
+                        Binding="{Binding Info}"
+                        Width="*" /> 
+                </DataGrid.Columns>
+            </DataGrid>
         </Grid>
     </Grid>
 </Window>

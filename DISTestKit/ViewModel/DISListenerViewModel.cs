@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 using OpenDis.Dis1998;
+using DISTestKit.ViewModel;
 
 namespace DISTestKit.ViewModel
 {
@@ -18,7 +16,7 @@ namespace DISTestKit.ViewModel
         public DISListenerViewModel(ChartViewModel viewModel)
         {
             _viewModel = viewModel;
-            _udpClient = new UdpClient(3000);
+            _udpClient = new UdpClient(_port);
         }
 
         public void Start()
@@ -31,32 +29,52 @@ namespace DISTestKit.ViewModel
             
             try
             {
-                IPEndPoint ep = new IPEndPoint(IPAddress.Any, _port);
-                byte[] data = _udpClient.EndReceive(ar, ref ep);
+                IPEndPoint remoteEp = new(IPAddress.Any, _port);
+                byte[] data = _udpClient.EndReceive(ar, ref remoteEp!);
 
                 // Continue receiving before processing to prevent missing packets
                 _udpClient.BeginReceive(ReceiveCallback, null);
 
-                if (data != null)
+                if (data != null && data.Length > 0)
                 {
                     foreach (var item in data)
                     {
-                        // Try to parse the PDU
                         var pdu = PduFactory.CreatePdu(item);
-                        if (pdu != null)
+                        if (pdu is not null && pdu is EntityStatePdu espdu)
                         {
-                            // Filter for only EntityStatePdu
-                            if (pdu is EntityStatePdu)
-                            {
-                                // Update chart data in the ViewModel
-                                _viewModel.IncrementMessageCount();
-                            }
+                            _viewModel.IncrementMessageCount();
+                            string src, dest;
+                            try
+                                {
+                                    src = $"{espdu.EntityID.Site}-{espdu.EntityID.Application}-{espdu.EntityID.Entity}";
+                                }
+                            catch
+                                {
+                                    src = remoteEp.ToString();
+                                }
+                            try
+                                {
+                                    dest = $"(dest:{espdu.EntityID.Site}-{espdu.EntityID.Application})";
+                                }
+                            catch
+                                {
+                                    dest = "(dest:unknown)";
+                                }
+                    
+                            string proto = "EntityStatePdu";
+                            int length = data.Length;
+                            string info = $"Entity X={espdu.EntityLinearVelocity.X:F2}, Y={espdu.EntityLinearVelocity.Y:F2}, Z={espdu.EntityLinearVelocity.Z:F2}";
+                            _viewModel.AddPacket(
+                                source: src,
+                                destination: dest,
+                                protocol: proto,
+                                length: length,
+                                info: info
+                            );
                         }
                     }
                 }
                 
-
-               
             }
 
             catch (Exception ex)
@@ -64,9 +82,6 @@ namespace DISTestKit.ViewModel
                 // Handle malformed PDU
                 Console.WriteLine($"DIS error: {ex.Message}");
             }
-
-            // Continue receiving
-            _udpClient.BeginReceive(ReceiveCallback, null);
         }
 
 

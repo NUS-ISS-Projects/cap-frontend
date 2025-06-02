@@ -7,6 +7,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 
+using DISTestKit.Model;
 using Timer = System.Timers.Timer;
 
 namespace DISTestKit.ViewModel
@@ -21,10 +22,14 @@ namespace DISTestKit.ViewModel
         private readonly ObservableCollection<DateTimePoint> _chartValues = [];
         private int _messageCountThisSecond;
         private readonly Timer _timer;
+        
+        public ObservableCollection<DisPacket> Packets { get; set; } = new();
+
+        private int _nextPacketNo = 1;
 
          public ChartViewModel()
         {
-             _chartValues = new ObservableCollection<DateTimePoint>();
+            _chartValues = new ObservableCollection<DateTimePoint>();
 
             Series = new ObservableCollection<ISeries>()
             {
@@ -40,10 +45,7 @@ namespace DISTestKit.ViewModel
 
             // set up the axes
             var now = DateTime.Now;
-            _chartValues.Add(new DateTimePoint(now.AddSeconds(-2), 5));
-            _chartValues.Add(new DateTimePoint(now.AddSeconds(-1), 8));
-            _chartValues.Add(new DateTimePoint(now, 10));
-            
+
             XAxes = new[]
             {
                 new Axis
@@ -99,6 +101,29 @@ namespace DISTestKit.ViewModel
             _messageCountThisSecond++;
         }
 
+        /// <summary>
+        /// Call this whenever a DIS message arrives—this method creates a DisPacket
+        /// instance and adds it to the “Packets” collection so the DataGrid will update.
+        /// </summary>
+        public void AddPacket(string source, string destination, string protocol, int length, string info)
+        {
+            var packet = new DisPacket
+            {
+                No = _nextPacketNo++,
+                Time = DateTime.Now,
+                Source = source,
+                Destination = destination,
+                Protocol = protocol,
+                Length = length,
+                Info = info
+            };
+
+            // Must dispatch to UI‐thread because Packets is bound to DataGrid
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                Packets.Add(packet);
+            });
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>
