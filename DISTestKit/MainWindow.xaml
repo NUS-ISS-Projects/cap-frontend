@@ -14,6 +14,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" /> 
             <RowDefinition Height="200" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -97,87 +98,132 @@
             Background="Gray"
             Height="1" />
         </Grid>
-        
-        <Grid Grid.Row="1" Grid.Column="0">
-            <lvc:CartesianChart
-                Series="{Binding Series}"
-                XAxes="{Binding XAxes}"
-                YAxes="{Binding YAxes}"
-                AnimationsSpeed="00:00:00"
-                EasingFunction="{x:Null}" 
-                Background="Transparent"/>
-        </Grid>
 
-        <Grid Grid.Row="1" Grid.Column="1">
+         <!-- ─────── Chart 1: Volume ─────── -->
+        <StackPanel Grid.Row="1" Grid.Column="0" Margin="10,0,5,0">
+            <TextBlock
+                Text="Volume"
+                FontSize="16"
+                FontWeight="Bold"
+                Margin="0,0,0,4"
+                HorizontalAlignment="Left" />
             <lvc:CartesianChart
-                Series="{Binding Series}"
-                XAxes="{Binding XAxes}"
-                YAxes="{Binding YAxes}"
+                Series="{Binding VolumeSeries}"
+                XAxes="{Binding VolumeXAxes}"
+                YAxes="{Binding VolumeYAxes}"
                 AnimationsSpeed="00:00:00"
-                EasingFunction="{x:Null}" 
-                Background="Transparent"/>
-        </Grid>
+                EasingFunction="{x:Null}"
+                Height="200"
+                Background="Transparent" />
+        </StackPanel>
 
-        <Grid Grid.Row="1" Grid.Column="2">
+        <!-- ─────── Chart 2: Throughput ─────── -->
+        <StackPanel Grid.Row="1" Grid.Column="1" Margin="5,0,5,0">
+            <TextBlock
+                Text="Throughput"
+                FontSize="16"
+                FontWeight="Bold"
+                Margin="0,0,0,4"
+                HorizontalAlignment="Left" />
             <lvc:CartesianChart
-                Series="{Binding Series}"
-                XAxes="{Binding XAxes}"
-                YAxes="{Binding YAxes}"
+                Series="{Binding ThroughputSeries}"
+                XAxes="{Binding ThroughputXAxes}"
+                YAxes="{Binding ThroughputYAxes}"
                 AnimationsSpeed="00:00:00"
-                EasingFunction="{x:Null}" 
-                Background="Transparent"/>
-        </Grid>
+                EasingFunction="{x:Null}"
+                Height="200"
+                Background="Transparent" />
+        </StackPanel>
+
+        <!-- ─────── Chart 3: Retransmits ─────── -->
+        <StackPanel Grid.Row="1" Grid.Column="2" Margin="5,0,10,0">
+            <TextBlock
+                Text="Retransmits"
+                FontSize="16"
+                FontWeight="Bold"
+                Margin="0,0,0,4"
+                HorizontalAlignment="Left" />
+            <lvc:CartesianChart
+                Series="{Binding RetransmitSeries}"
+                XAxes="{Binding RetransmitXAxes}"
+                YAxes="{Binding RetransmitYAxes}"
+                AnimationsSpeed="00:00:00"
+                EasingFunction="{x:Null}"
+                Height="200"
+                Background="Transparent" />
+        </StackPanel>
+
+        <Border
+            Grid.Row="2"
+            Grid.ColumnSpan="3"
+            Height="1"
+            Background="LightGray"
+            Margin="10,10,10,0" />
 
         <!--DIS messages received-->
-        <Grid Grid.Row="2" Grid.Column="0">
-            <DataGrid 
-                ItemsSource="{Binding Packets}"
-                AutoGenerateColumns="False"
-                CanUserAddRows="False"
-                IsReadOnly="True"
-                GridLinesVisibility="Horizontal"
-                HeadersVisibility="Column"
-                RowHeight="28"
-                ColumnHeaderHeight="30"
-                FontSize="12"
-                Margin="0,10,10,0">
+        <Grid Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="10,10,10,10">
+            <ui:DataGrid
+                    ItemsSource="{Binding Packets}"
+                    AutoGenerateColumns="False"
+                    CanUserAddRows="False"
+                    IsReadOnly="True"
+                    GridLinesVisibility="Horizontal"
+                    HeadersVisibility="Column"
+                    RowHeight="30"
+                    ColumnHeaderHeight="30"
+                    FontSize="12"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    Background="White"
+                    Foreground="Black">
+
+                <ui:DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="BorderBrush" Value="LightGray"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/> 
+                        <Setter Property="Padding" Value="4,0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                        <Setter Property="FontWeight" Value="Bold"/>
+                    </Style>
+                </ui:DataGrid.ColumnHeaderStyle>
+
                 <DataGrid.Columns>
                     <DataGridTextColumn
                         Header="No"
                         Binding="{Binding No}"
-                        Width="40" />
+                        Width="50" />
 
                     <DataGridTextColumn
                         Header="Time"
                         Binding="{Binding Time, StringFormat=HH:mm:ss}"
-                        Width="80" />
+                        Width="100" />
 
                     <DataGridTextColumn
                         Header="Source"
                         Binding="{Binding Source}"
-                        Width="120" />
+                        Width="150" />
 
                     <DataGridTextColumn
                         Header="Destination"
                         Binding="{Binding Destination}"
-                        Width="120" />
+                        Width="150" />
 
                     <DataGridTextColumn
                         Header="Protocol"
                         Binding="{Binding Protocol}"
-                        Width="80" />
+                        Width="150" />
 
                     <DataGridTextColumn
                         Header="Length"
                         Binding="{Binding Length}"
-                        Width="60" />
+                        Width="50" />
 
                     <DataGridTextColumn
                         Header="Info"
                         Binding="{Binding Info}"
                         Width="*" /> 
                 </DataGrid.Columns>
-            </DataGrid>
+            </ui:DataGrid>
         </Grid>
     </Grid>
 </Window>
