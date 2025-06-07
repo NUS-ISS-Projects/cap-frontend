@@ -5,10 +5,20 @@
     xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
     xmlns:lcs="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
     xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
+    xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     Title="DIS Dashboard"
     Height="600"
     Width="1000"
 >
+    <Window.Resources>
+        <CollectionViewSource x:Key="LogsCollection"
+                            Source="{Binding LogsVm.Packets}">
+        <CollectionViewSource.SortDescriptions>
+            <scm:SortDescription PropertyName="Time"
+                                Direction="Descending"/>
+        </CollectionViewSource.SortDescriptions>
+        </CollectionViewSource>
+    </Window.Resources>
 
     <Grid Margin="0,0,0,0">
         <Grid.RowDefinitions>
@@ -108,9 +118,9 @@
                 Margin="0,0,0,4"
                 HorizontalAlignment="Left" />
             <lvc:CartesianChart
-                Series="{Binding VolumeSeries}"
-                XAxes="{Binding VolumeXAxes}"
-                YAxes="{Binding VolumeYAxes}"
+                Series="{Binding VolumeVm.Series}"
+                XAxes="{Binding VolumeVm.XAxes}"
+                YAxes="{Binding VolumeVm.YAxes}"
                 AnimationsSpeed="00:00:00"
                 EasingFunction="{x:Null}"
                 Height="200"
@@ -126,9 +136,9 @@
                 Margin="0,0,0,4"
                 HorizontalAlignment="Left" />
             <lvc:CartesianChart
-                Series="{Binding ThroughputSeries}"
-                XAxes="{Binding ThroughputXAxes}"
-                YAxes="{Binding ThroughputYAxes}"
+                Series="{Binding ThroughputVm.Series}"
+                XAxes="{Binding ThroughputVm.XAxes}"
+                YAxes="{Binding ThroughputVm.YAxes}"
                 AnimationsSpeed="00:00:00"
                 EasingFunction="{x:Null}"
                 Height="200"
@@ -144,9 +154,9 @@
                 Margin="0,0,0,4"
                 HorizontalAlignment="Left" />
             <lvc:CartesianChart
-                Series="{Binding RetransmitSeries}"
-                XAxes="{Binding RetransmitXAxes}"
-                YAxes="{Binding RetransmitYAxes}"
+                Series="{Binding RetransmitVm.Series}"
+                XAxes="{Binding RetransmitVm.XAxes}"
+                YAxes="{Binding RetransmitVm.YAxes}"
                 AnimationsSpeed="00:00:00"
                 EasingFunction="{x:Null}"
                 Height="200"
@@ -163,7 +173,7 @@
         <!--DIS messages received-->
         <Grid Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="10,10,10,10">
             <ui:DataGrid
-                    ItemsSource="{Binding Packets}"
+                    ItemsSource="{Binding Source={StaticResource LogsCollection}}"
                     AutoGenerateColumns="False"
                     CanUserAddRows="False"
                     IsReadOnly="True"
@@ -198,6 +208,11 @@
                         Binding="{Binding Time, StringFormat=HH:mm:ss}"
                         Width="100" />
 
+                    <DataGridTextColumn 
+                        Header="Type" 
+                        Binding="{Binding Type}" 
+                        Width="100"/>
+
                     <DataGridTextColumn
                         Header="Source"
                         Binding="{Binding Source}"
@@ -212,11 +227,6 @@
                         Header="Protocol"
                         Binding="{Binding Protocol}"
                         Width="150" />
-
-                    <DataGridTextColumn
-                        Header="Length"
-                        Binding="{Binding Length}"
-                        Width="50" />
 
                     <DataGridTextColumn
                         Header="Info"
