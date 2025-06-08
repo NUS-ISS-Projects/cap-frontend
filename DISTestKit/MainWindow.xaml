@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
     xmlns:lcs="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
+    xmlns:livechart="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
     xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     Title="DIS Dashboard"
@@ -117,14 +118,27 @@
                 FontWeight="Bold"
                 Margin="0,0,0,4"
                 HorizontalAlignment="Left" />
-            <lvc:CartesianChart
+            <!--<lvc:CartesianChart
                 Series="{Binding VolumeVm.Series}"
                 XAxes="{Binding VolumeVm.XAxes}"
                 YAxes="{Binding VolumeVm.YAxes}"
                 AnimationsSpeed="00:00:00"
                 EasingFunction="{x:Null}"
                 Height="200"
-                Background="Transparent" />
+                Background="Transparent" />-->
+            <livechart:CartesianChart Series="{Binding DataVolumeVm.SeriesCollection}" LegendLocation="Right" Height="200">
+                <livechart:CartesianChart.AxisX>
+                    <livechart:Axis Title="Time"
+           LabelFormatter="{Binding DataVolumeVm.XFormatter}"
+           DisableAnimations="True"
+           MinValue="{Binding DataVolumeVm.MinX, Mode=OneWay}"
+           MaxValue="{Binding DataVolumeVm.MaxX, Mode=OneWay}" />
+                </livechart:CartesianChart.AxisX>
+
+                <livechart:CartesianChart.AxisY>
+                    <livechart:Axis Title="Messages/Sec" MinValue="0" Separator="{Binding DataVolumeVm.IntSeparator}"/>
+                </livechart:CartesianChart.AxisY>
+            </livechart:CartesianChart>
         </StackPanel>
 
         <!-- ─────── Chart 2: Throughput ─────── -->

@@ -25,6 +25,8 @@ public class MainViewModel : INotifyPropertyChanged
         public VolumeChartViewModel VolumeVm { get; }
         public ThroughputChartViewModel ThroughputVm { get; }
         public RetransmitChartViewModel RetransmitVm { get; }
+
+        public DataVolumeChartViewModel DataVolumeVm { get; }
         public LogViewModel LogsVm { get; }
 
         public ICommand PlayCommand { get; }
@@ -42,6 +44,7 @@ public class MainViewModel : INotifyPropertyChanged
             ThroughputVm = new ThroughputChartViewModel();
             RetransmitVm = new RetransmitChartViewModel();
             LogsVm = new LogViewModel();
+            DataVolumeVm = new DataVolumeChartViewModel();
 
             PlayCommand = new RelayCommand(TogglePlay);
             RefreshCommand = new RelayCommand(() => _ = LoadOnceAsync());
@@ -115,6 +118,8 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 VolumeVm.Update(new DateTimePoint(ts, dto.PdusInLastSixtySeconds));
                 ThroughputVm.Update(new DateTimePoint(ts, dto.AveragePduRatePerSecondLastSixtySeconds));
+
+                DataVolumeVm.AddDataPoint(DateTime.Now, Convert.ToInt32((dto.PdusInLastSixtySeconds/60)));
             });
 
             var nowEpochSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
