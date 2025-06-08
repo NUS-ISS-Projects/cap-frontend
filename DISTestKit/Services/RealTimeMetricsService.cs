@@ -20,13 +20,15 @@ namespace DISTestKit.Services
             return result;
         }
 
-        public async Task<List<EntityStateRecord>> GetHistoricalEntityStatesAsync()
-        => await _http.GetFromJsonAsync<List<EntityStateRecord>>("entity-states")
+        public async Task<List<EntityStateRecord>> GetHistoricalEntityStatesAsync(long startTime, long endTime)
+        => await _http.GetFromJsonAsync<List<EntityStateRecord>>(
+               $"entity-states?startTime={startTime}&endTime={endTime}")
            ?? new List<EntityStateRecord>();
 
-        public async Task<List<FireEventRecord>> GetHistoricalFireEventsAsync()
-            => await _http.GetFromJsonAsync<List<FireEventRecord>>("fire-events")
-            ?? new List<FireEventRecord>();
+        public async Task<List<FireEventRecord>> GetHistoricalFireEventsAsync(long startTime, long endTime)
+        => await _http.GetFromJsonAsync<List<FireEventRecord>>(
+               $"fire-events?startTime={startTime}&endTime={endTime}")
+           ?? new List<FireEventRecord>();
 
         public static long FromDisAbsoluteTimestamp(long disTimestamp)
         {
@@ -35,6 +37,11 @@ namespace DISTestKit.Services
             return (disTimestamp & msbMask) != 0
             ? disTimestamp & valueMask
             : disTimestamp;
+        }
+        public static long ToDisAbsoluteTimestamp(long unixSeconds)
+        {
+            const long msbMask = 0x80000000L;
+            return (unixSeconds & 0x7FFFFFFFL) | msbMask;
         }
     }
 }
