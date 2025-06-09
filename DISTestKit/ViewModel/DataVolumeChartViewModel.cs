@@ -31,7 +31,7 @@ namespace DISTestKit.ViewModel
         {
             new LineSeries
             {
-                Title = "DIS Messages/sec",
+                Title = "",
                 Values = _chartValues,
                 PointGeometrySize = 5
             }
@@ -60,7 +60,7 @@ namespace DISTestKit.ViewModel
             });
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }

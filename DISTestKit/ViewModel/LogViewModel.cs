@@ -17,8 +17,9 @@ namespace DISTestKit.ViewModel
         {
             var proto = "EntityStatePdu";
             var src   = $"{site}-{app}-{entity}";
+            var dest  = "NA";
             var info  = $"X={x:F2}, Y={y:F2}, Z={z:F2}";
-            AddCommon(ts, PacketType.EntityState, src, "", proto, 0, info);
+            AddCommon(ts, PacketType.EntityState, src, dest, proto, 0, info);
         }
 
         public void AddFireEvent(long ts, int fSite,int fApp,int fEntity,

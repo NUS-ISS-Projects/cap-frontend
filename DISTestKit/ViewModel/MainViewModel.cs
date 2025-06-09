@@ -24,7 +24,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         public VolumeChartViewModel VolumeVm { get; }
         public ThroughputChartViewModel ThroughputVm { get; }
-        public RetransmitChartViewModel RetransmitVm { get; }
+        public PduTypeComparisonViewModel ComparisonVm { get; }
 
         public DataVolumeChartViewModel DataVolumeVm { get; }
         public LogViewModel LogsVm { get; }
@@ -37,12 +37,18 @@ public class MainViewModel : INotifyPropertyChanged
         private bool _isPlaying;
         private long _lastTimestamp = 0; 
 
+        public int    TotalPdusLastMinute     { get; private set; }
+        public double AveragePdusPerSecond    { get; private set; }
+        public double PeakPdusPerSecond       { get; private set; }
+        public string EntityVsFireSummary     { get; private set; }
+        private readonly Queue<int> _window = new(); 
+
         public MainViewModel()
         {
             _metricsSvc = new RealTimeMetricsService("http://34.98.89.167/api/acquisition/");
             VolumeVm = new VolumeChartViewModel();
             ThroughputVm = new ThroughputChartViewModel();
-            RetransmitVm = new RetransmitChartViewModel();
+            ComparisonVm = new PduTypeComparisonViewModel();
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
 
@@ -110,6 +116,13 @@ public class MainViewModel : INotifyPropertyChanged
         {
             // First update charts from /realtime
             var dto = await _metricsSvc.GetAsync();
+            var countThisSecond = dto.PdusInLastSixtySeconds;
+            _window.Enqueue((int)countThisSecond);
+            if (_window.Count > 60) _window.Dequeue();
+            TotalPdusLastMinute = _window.Sum();
+            AveragePdusPerSecond = _window.Average();
+            PeakPdusPerSecond = _window.Max();
+        
             var ts  = DateTimeOffset
                         .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
                         .LocalDateTime;
@@ -118,18 +131,26 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 VolumeVm.Update(new DateTimePoint(ts, dto.PdusInLastSixtySeconds));
                 ThroughputVm.Update(new DateTimePoint(ts, dto.AveragePduRatePerSecondLastSixtySeconds));
-
-                DataVolumeVm.AddDataPoint(DateTime.Now, Convert.ToInt32((dto.PdusInLastSixtySeconds/60)));
+                DataVolumeVm.AddDataPoint(DateTime.Now, Convert.ToInt32(dto.PdusInLastSixtySeconds /60));
             });
 
-            var nowEpochSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var nowDisTs    = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowEpochSec);
+            var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var nowDisTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
 
             var newStates = await _metricsSvc.GetHistoricalEntityStatesAsync(_lastTimestamp, nowDisTs);
-            var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync    (_lastTimestamp, nowDisTs);
+            var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync(_lastTimestamp, nowDisTs);
+
+            var entityCount = newStates.LongCount();
+            var fireCount   = newFires.LongCount();
+            EntityVsFireSummary = $"{entityCount} / {fireCount}";
+            OnPropertyChanged(nameof(TotalPdusLastMinute));
+            OnPropertyChanged(nameof(AveragePdusPerSecond));
+            OnPropertyChanged(nameof(PeakPdusPerSecond));
+            OnPropertyChanged(nameof(EntityVsFireSummary));
 
             App.Current.Dispatcher.Invoke(() =>
             {
+                ComparisonVm.UpdateCounts(entityCount, fireCount);
                 foreach (var s in newStates)
                     LogsVm.AddEntityState(
                         s.Timestamp,
@@ -145,12 +166,9 @@ public class MainViewModel : INotifyPropertyChanged
             });
 
             // Advance bookmark
-            var maxTs = new[]
-            {
-                newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max(),
-                newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max()
-            }.Max();
-            _lastTimestamp = Math.Max(_lastTimestamp, maxTs);
+            var maxStateTs = newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
+            var maxFireTs  = newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
+            _lastTimestamp = Math.Max(_lastTimestamp, Math.Max(maxStateTs, maxFireTs));
         }
         catch
         {
