@@ -52,6 +52,8 @@ public class MainViewModel : INotifyPropertyChanged
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
 
+            EntityVsFireSummary = string.Empty;
+
             PlayCommand = new RelayCommand(TogglePlay);
             RefreshCommand = new RelayCommand(() => _ = LoadOnceAsync());
 
@@ -79,11 +81,17 @@ public class MainViewModel : INotifyPropertyChanged
             IsPlaying = false;
             LogsVm.Reset();
 
-            var nowEpochSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var nowDisTs    = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowEpochSec);
+            // compute the end‐timestamp from pickers:
+            var dt       = SelectedDate + SelectedTime;
+            var unixSec  = new DateTimeOffset(dt).ToUnixTimeSeconds();
+            var endDisTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(unixSec);
+
+            // compute start = one minute before (or whatever window):
+            var startUnixSec = new DateTimeOffset(dt.AddMinutes(-1)).ToUnixTimeSeconds();
+            var startDisTs   = RealTimeMetricsService.ToDisAbsoluteTimestamp(startUnixSec);
 
             // Fetch historical entity-states
-            var states = await _metricsSvc.GetHistoricalEntityStatesAsync(0, nowDisTs);
+            var states = await _metricsSvc.GetHistoricalEntityStatesAsync(startDisTs, endDisTs);
             foreach (var s in states)
             {
                 LogsVm.AddEntityState(
@@ -94,7 +102,7 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             // Fetch historical fire-events
-            var fires = await _metricsSvc.GetHistoricalFireEventsAsync(0, nowDisTs);
+            var fires = await _metricsSvc.GetHistoricalFireEventsAsync(startDisTs, endDisTs);
             foreach (var f in fires)
             LogsVm.AddFireEvent(
                 f.Timestamp,
@@ -102,79 +110,102 @@ public class MainViewModel : INotifyPropertyChanged
                 f.TargetSite, f.TargetApplication, f.TargetEntity,
                 f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
 
-            _lastTimestamp = states.Select(s => s.Timestamp)
-                               .Concat(fires.Select(f => f.Timestamp))
-                               .DefaultIfEmpty(0)
-                               .Max();
+            _lastTimestamp = Math.Max(startDisTs, endDisTs);
 
             IsPlaying = was;
         }
 
         private async Task OnTickAsync()
-    {
-        try
         {
-            // First update charts from /realtime
-            var dto = await _metricsSvc.GetAsync();
-            var countThisSecond = dto.PdusInLastSixtySeconds;
-            _window.Enqueue((int)countThisSecond);
-            if (_window.Count > 60) _window.Dequeue();
-            TotalPdusLastMinute = _window.Sum();
-            AveragePdusPerSecond = _window.Average();
-            PeakPdusPerSecond = _window.Max();
-        
-            var ts  = DateTimeOffset
-                        .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
-                        .LocalDateTime;
-
-            App.Current.Dispatcher.Invoke(() =>
+            try
             {
-                VolumeVm.Update(new DateTimePoint(ts, dto.PdusInLastSixtySeconds));
-                ThroughputVm.Update(new DateTimePoint(ts, dto.AveragePduRatePerSecondLastSixtySeconds));
-                DataVolumeVm.AddDataPoint(DateTime.Now, Convert.ToInt32(dto.PdusInLastSixtySeconds /60));
-            });
+                // First update charts from /realtime
+                var dto = await _metricsSvc.GetAsync();
+                var countThisSecond = dto.PdusInLastSixtySeconds;
+                _window.Enqueue((int)countThisSecond);
+                if (_window.Count > 60) _window.Dequeue();
+                TotalPdusLastMinute = _window.Sum();
+                AveragePdusPerSecond = _window.Average();
+                PeakPdusPerSecond = _window.Max();
+            
+                var ts  = DateTimeOffset
+                            .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
+                            .LocalDateTime;
 
-            var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var nowDisTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    VolumeVm.Update(new DateTimePoint(ts, dto.PdusInLastSixtySeconds));
+                    ThroughputVm.Update(new DateTimePoint(ts, dto.AveragePduRatePerSecondLastSixtySeconds));
+                    DataVolumeVm.AddDataPoint(DateTime.Now, Convert.ToInt32(dto.PdusInLastSixtySeconds /60));
+                });
 
-            var newStates = await _metricsSvc.GetHistoricalEntityStatesAsync(_lastTimestamp, nowDisTs);
-            var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync(_lastTimestamp, nowDisTs);
+                var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var nowDisTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
 
-            var entityCount = newStates.LongCount();
-            var fireCount   = newFires.LongCount();
-            EntityVsFireSummary = $"{entityCount} / {fireCount}";
-            OnPropertyChanged(nameof(TotalPdusLastMinute));
-            OnPropertyChanged(nameof(AveragePdusPerSecond));
-            OnPropertyChanged(nameof(PeakPdusPerSecond));
-            OnPropertyChanged(nameof(EntityVsFireSummary));
+                var newStates = await _metricsSvc.GetHistoricalEntityStatesAsync(_lastTimestamp, nowDisTs);
+                var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync(_lastTimestamp, nowDisTs);
 
-            App.Current.Dispatcher.Invoke(() =>
-            {
-                ComparisonVm.UpdateCounts(entityCount, fireCount);
-                foreach (var s in newStates)
-                    LogsVm.AddEntityState(
-                        s.Timestamp,
-                        s.Site, s.Application, s.Entity,
-                        s.LocationX, s.LocationY, s.LocationZ);
+                var entityCount = newStates.LongCount();
+                var fireCount   = newFires.LongCount();
+                EntityVsFireSummary = $"{entityCount} / {fireCount}";
+                OnPropertyChanged(nameof(TotalPdusLastMinute));
+                OnPropertyChanged(nameof(AveragePdusPerSecond));
+                OnPropertyChanged(nameof(PeakPdusPerSecond));
+                OnPropertyChanged(nameof(EntityVsFireSummary));
 
-                foreach (var f in newFires)
-                    LogsVm.AddFireEvent(
-                        f.Timestamp,
-                        f.FiringSite, f.FiringApplication, f.FiringEntity,
-                        f.TargetSite, f.TargetApplication, f.TargetEntity,
-                        f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
-            });
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    ComparisonVm.UpdateCounts(entityCount, fireCount);
+                    foreach (var s in newStates)
+                        LogsVm.AddEntityState(
+                            s.Timestamp,
+                            s.Site, s.Application, s.Entity,
+                            s.LocationX, s.LocationY, s.LocationZ);
 
-            // Advance bookmark
-            var maxStateTs = newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
-            var maxFireTs  = newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
-            _lastTimestamp = Math.Max(_lastTimestamp, Math.Max(maxStateTs, maxFireTs));
+                    foreach (var f in newFires)
+                        LogsVm.AddFireEvent(
+                            f.Timestamp,
+                            f.FiringSite, f.FiringApplication, f.FiringEntity,
+                            f.TargetSite, f.TargetApplication, f.TargetEntity,
+                            f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
+                });
+
+                // Advance bookmark
+                var maxStateTs = newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
+                var maxFireTs  = newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
+                _lastTimestamp = Math.Max(_lastTimestamp, Math.Max(maxStateTs, maxFireTs));
+            }
+            catch
+                {
+                    // ignore
+                }
         }
-        catch
+        private DateTime _selectedDate = DateTime.Now.Date;
+        public DateTime SelectedDate
         {
-            // ignore
+            get => _selectedDate;
+            set
+            {
+                if (_selectedDate == value) return;
+                _selectedDate = value;
+                OnPropertyChanged(nameof(SelectedDate));
+                _ = LoadOnceAsync();
+            }
         }
-    }
+
+        private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
+        public TimeSpan SelectedTime
+        {
+            get => _selectedTime;
+            set
+            {
+                if (_selectedTime == value) return;
+                _selectedTime = value;
+                OnPropertyChanged(nameof(SelectedTime));
+                _ = LoadOnceAsync();
+            }
+        }
+        private DateTime SelectedDateTime => SelectedDate + SelectedTime;
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string n) =>

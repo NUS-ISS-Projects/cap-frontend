@@ -6,6 +6,7 @@
     xmlns:lcs="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
     xmlns:livechart="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
     xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
+    xmlns:xtk="http://schemas.xceed.com/wpf/xaml/toolkit"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     Title="DIS Dashboard"
     Height="800"
@@ -45,7 +46,7 @@
                 Grid.Column="0"
                 FontSize="24"
                 FontWeight="Bold"
-                Margin="12,0,0,0"
+                Margin="20,0,0,20"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Left"
                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
@@ -63,12 +64,12 @@
                 Width="200"
                 Margin="0,0,12,0"
                 SelectedDate="{Binding SelectedDate, Mode=TwoWay}" />
-            <ui:TimePicker
+            <xtk:TimePicker 
+                Value="{Binding SelectedTime, Mode=TwoWay}" 
+                Format="Custom" 
+                FormatString="HH:mm"
                 Width="200"
-                ClockIdentifier="Clock24Hour"
-                Margin="0,0,5,0"
-                MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
-                SelectedTime="{Binding SelectedTime, Mode=TwoWay}" />
+                Margin="0,0,5,0"/>
             <ui:Button
                 Command="{Binding PlayCommand}"
                 MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
@@ -164,7 +165,7 @@
 
         <!-- ─────── Charts ─────── -->
 
-        <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="10,0" Height="300">
+        <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="20,20,0,0" Height="400">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
