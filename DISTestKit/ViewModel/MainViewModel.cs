@@ -22,6 +22,7 @@ public class RelayCommand : ICommand
 
 public class MainViewModel : INotifyPropertyChanged
     {
+        // ––– Sub-ViewModels ––––––––––––––––––––––––––––––––––––––––––––––
         public VolumeChartViewModel VolumeVm { get; }
         public ThroughputChartViewModel ThroughputVm { get; }
         public PduTypeComparisonViewModel ComparisonVm { get; }
@@ -29,19 +30,82 @@ public class MainViewModel : INotifyPropertyChanged
         public DataVolumeChartViewModel DataVolumeVm { get; }
         public LogViewModel LogsVm { get; }
 
+        // ––– Commands & Playback –––––––––––––––––––––––––––––––––––––––––
         public ICommand PlayCommand { get; }
         public ICommand RefreshCommand { get; }
 
+        private bool _isPlaying;
+        public bool IsPlaying
+        {
+            get => _isPlaying;
+            set
+            {
+                if (_isPlaying == value) return;
+                _isPlaying = value;
+                OnPropertyChanged(nameof(IsPlaying));
+                OnPropertyChanged(nameof(IsPaused));
+                _timer.Enabled = value;
+
+                // When pausing, immediately load the selected range
+                if (!value)
+                    _ = LoadOnceAsync();
+                else
+                {
+                    // On resume, clear any manual selection to show real-time
+                    SelectedTime = null;
+                    SelectedDate = DateTime.Now.Date;
+                    _lastTimestamp = 0;
+                }
+            }
+        }
+        public bool IsPaused => !_isPlaying;
+
+        // ––– Date/Time Selection ––––––––––––––––––––––––––––––––––––––––
+
+        private DateTime _selectedDate = DateTime.Now.Date;
+        public DateTime SelectedDate
+        {
+            get => _selectedDate;
+            set
+            {
+                if (_selectedDate == value) return;
+                _selectedDate = value;
+                OnPropertyChanged(nameof(SelectedDate));
+                if (IsPaused) _ = LoadOnceAsync();
+            }
+        }
+
+        private DateTime? _selectedTime = null;
+        public DateTime? SelectedTime
+        {
+            get => _selectedTime;
+            set
+            {
+                if (_selectedTime == value) return;
+                _selectedTime = value;
+                OnPropertyChanged(nameof(SelectedTime));
+                if (IsPaused) _ = LoadOnceAsync();
+            }
+        }
+
+        // For a selected time, define a 1-hour window
+        private DateTime StartDateTime => SelectedDate.Date;
+        private DateTime EndDateTime => SelectedTime.HasValue
+            ? SelectedDate.Date + SelectedTime.Value.TimeOfDay + TimeSpan.FromHours(1)
+            : SelectedDate.Date.AddDays(1).AddTicks(-1);
+
+        // ––– Dashboard Metrics ––––––––––––––––––––––––––––––––––––––––––
+        public int    TotalPdusLastMinute   { get; private set; }
+        public double AveragePdusPerSecond  { get; private set; }
+        public double PeakPdusPerSecond     { get; private set; }
+        public string EntityVsFireSummary   { get; private set; }
+        private readonly Queue<int> _window = new();
+
+        // ––– Infrastructure –––––––––––––––––––––––––––––––––––––––––––––
         private readonly RealTimeMetricsService _metricsSvc;
         private readonly Timer _timer;
-        private bool _isPlaying;
-        private long _lastTimestamp = 0; 
+        private long _lastTimestamp;
 
-        public int    TotalPdusLastMinute     { get; private set; }
-        public double AveragePdusPerSecond    { get; private set; }
-        public double PeakPdusPerSecond       { get; private set; }
-        public string EntityVsFireSummary     { get; private set; }
-        private readonly Queue<int> _window = new(); 
 
         public MainViewModel()
         {
@@ -54,65 +118,51 @@ public class MainViewModel : INotifyPropertyChanged
 
             EntityVsFireSummary = string.Empty;
 
-            PlayCommand = new RelayCommand(TogglePlay);
-            RefreshCommand = new RelayCommand(() => _ = LoadOnceAsync());
+            PlayCommand    = new RelayCommand(() => IsPlaying = !IsPlaying);
+            RefreshCommand = new RelayCommand(() =>
+            {
+                SelectedDate = DateTime.Now.Date;
+                SelectedTime = null;
+                _ = LoadOnceAsync();
+            });
 
             _timer = new Timer(1000) { AutoReset = true };
             _timer.Elapsed += async (_, __) => await OnTickAsync();
+            _lastTimestamp = 0;
+            IsPlaying = true;
         }
-
-        public bool IsPlaying
-        {
-            get => _isPlaying;
-            set
-            {
-                if (_isPlaying == value) return;
-                _isPlaying = value;
-                OnPropertyChanged(nameof(IsPlaying));
-                _timer.Enabled = value;
-            }
-        }
-
-        private void TogglePlay() => IsPlaying = !IsPlaying;
 
         private async Task LoadOnceAsync()
         {
-            var was = IsPlaying;
-            IsPlaying = false;
             LogsVm.Reset();
+            var startDt = StartDateTime;
+            var endDt = EndDateTime;
 
-            // compute the end‐timestamp from pickers:
-            var dt       = SelectedDate + SelectedTime;
-            var unixSec  = new DateTimeOffset(dt).ToUnixTimeSeconds();
-            var endDisTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(unixSec);
+            // Convert to DIS timestamps
+            var startTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(
+                new DateTimeOffset(startDt).ToUnixTimeSeconds());
+            var endTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(
+                new DateTimeOffset(endDt).ToUnixTimeSeconds());
 
-            // compute start = one minute before (or whatever window):
-            var startUnixSec = new DateTimeOffset(dt.AddMinutes(-1)).ToUnixTimeSeconds();
-            var startDisTs   = RealTimeMetricsService.ToDisAbsoluteTimestamp(startUnixSec);
+            // Fetch and push historical rows
+            var states = await _metricsSvc.GetHistoricalEntityStatesAsync(startTs, endTs);
+            var fires = await _metricsSvc.GetHistoricalFireEventsAsync(startTs, endTs);
 
-            // Fetch historical entity-states
-            var states = await _metricsSvc.GetHistoricalEntityStatesAsync(startDisTs, endDisTs);
-            foreach (var s in states)
-            {
-                LogsVm.AddEntityState(
-                    s.Timestamp,
-                    s.Site, s.Application, s.Entity,
-                    s.LocationX, s.LocationY, s.LocationZ
-                );
-            }
+            App.Current.Dispatcher.Invoke(() =>
+                {
+                    foreach (var s in states)
+                        LogsVm.AddEntityState(
+                            s.Timestamp, s.Site, s.Application, s.Entity,
+                            s.LocationX, s.LocationY, s.LocationZ);
 
-            // Fetch historical fire-events
-            var fires = await _metricsSvc.GetHistoricalFireEventsAsync(startDisTs, endDisTs);
-            foreach (var f in fires)
-            LogsVm.AddFireEvent(
-                f.Timestamp,
-                f.FiringSite, f.FiringApplication, f.FiringEntity,
-                f.TargetSite, f.TargetApplication, f.TargetEntity,
-                f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
-
-            _lastTimestamp = Math.Max(startDisTs, endDisTs);
-
-            IsPlaying = was;
+                    foreach (var f in fires)
+                        LogsVm.AddFireEvent(
+                            f.Timestamp,
+                            f.FiringSite, f.FiringApplication, f.FiringEntity,
+                            f.TargetSite, f.TargetApplication, f.TargetEntity,
+                            f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
+                });
+            _lastTimestamp = endTs;
         }
 
         private async Task OnTickAsync()
@@ -121,91 +171,59 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 // First update charts from /realtime
                 var dto = await _metricsSvc.GetAsync();
-                var countThisSecond = dto.PdusInLastSixtySeconds;
-                _window.Enqueue((int)countThisSecond);
+                var nowLocal = DateTimeOffset
+                        .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
+                        .LocalDateTime;
+                _window.Enqueue((int)dto.PdusInLastSixtySeconds);
                 if (_window.Count > 60) _window.Dequeue();
-                TotalPdusLastMinute = _window.Sum();
-                AveragePdusPerSecond = _window.Average();
-                PeakPdusPerSecond = _window.Max();
-            
-                var ts  = DateTimeOffset
-                            .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
-                            .LocalDateTime;
 
-                App.Current.Dispatcher.Invoke(() =>
-                {
-                    VolumeVm.Update(new DateTimePoint(ts, dto.PdusInLastSixtySeconds));
-                    ThroughputVm.Update(new DateTimePoint(ts, dto.AveragePduRatePerSecondLastSixtySeconds));
-                    DataVolumeVm.AddDataPoint(DateTime.Now, Convert.ToInt32(dto.PdusInLastSixtySeconds /60));
-                });
-
-                var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var nowDisTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
-
-                var newStates = await _metricsSvc.GetHistoricalEntityStatesAsync(_lastTimestamp, nowDisTs);
-                var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync(_lastTimestamp, nowDisTs);
-
-                var entityCount = newStates.LongCount();
-                var fireCount   = newFires.LongCount();
-                EntityVsFireSummary = $"{entityCount} / {fireCount}";
+                TotalPdusLastMinute    = _window.Sum();
+                AveragePdusPerSecond   = _window.Average();
+                PeakPdusPerSecond      = _window.Max();
                 OnPropertyChanged(nameof(TotalPdusLastMinute));
                 OnPropertyChanged(nameof(AveragePdusPerSecond));
                 OnPropertyChanged(nameof(PeakPdusPerSecond));
+
+                var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var nowTs   = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
+                var newStates = await _metricsSvc.GetHistoricalEntityStatesAsync(_lastTimestamp, nowTs);
+                var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync   (_lastTimestamp, nowTs);
+                var entityCount = newStates.LongCount();
+                var fireCount   = newFires .LongCount();
+                EntityVsFireSummary = $"{entityCount} / {fireCount}";
                 OnPropertyChanged(nameof(EntityVsFireSummary));
 
                 App.Current.Dispatcher.Invoke(() =>
                 {
+                    VolumeVm.Update(new DateTimePoint(nowLocal, dto.PdusInLastSixtySeconds));
+                    ThroughputVm.Update(new DateTimePoint(nowLocal, dto.AveragePduRatePerSecondLastSixtySeconds));
+                    DataVolumeVm.AddDataPoint(nowLocal, (int)(dto.PdusInLastSixtySeconds/60));
+
                     ComparisonVm.UpdateCounts(entityCount, fireCount);
+
                     foreach (var s in newStates)
-                        LogsVm.AddEntityState(
-                            s.Timestamp,
-                            s.Site, s.Application, s.Entity,
-                            s.LocationX, s.LocationY, s.LocationZ);
+                    LogsVm.AddEntityState(
+                        s.Timestamp, s.Site, s.Application, s.Entity,
+                        s.LocationX, s.LocationY, s.LocationZ);
 
                     foreach (var f in newFires)
-                        LogsVm.AddFireEvent(
-                            f.Timestamp,
-                            f.FiringSite, f.FiringApplication, f.FiringEntity,
-                            f.TargetSite, f.TargetApplication, f.TargetEntity,
-                            f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
+                    LogsVm.AddFireEvent(
+                        f.Timestamp,
+                        f.FiringSite, f.FiringApplication, f.FiringEntity,
+                        f.TargetSite,  f.TargetApplication,  f.TargetEntity,
+                        f.MunitionSite,f.MunitionApplication,f.MunitionEntity);
                 });
 
                 // Advance bookmark
-                var maxStateTs = newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
-                var maxFireTs  = newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
-                _lastTimestamp = Math.Max(_lastTimestamp, Math.Max(maxStateTs, maxFireTs));
+                var maxState = newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
+                var maxFire  = newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
+                _lastTimestamp = Math.Max(_lastTimestamp, Math.Max(maxState, maxFire));
             }
             catch
                 {
                     // ignore
                 }
         }
-        private DateTime _selectedDate = DateTime.Now.Date;
-        public DateTime SelectedDate
-        {
-            get => _selectedDate;
-            set
-            {
-                if (_selectedDate == value) return;
-                _selectedDate = value;
-                OnPropertyChanged(nameof(SelectedDate));
-                _ = LoadOnceAsync();
-            }
-        }
-
-        private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
-        public TimeSpan SelectedTime
-        {
-            get => _selectedTime;
-            set
-            {
-                if (_selectedTime == value) return;
-                _selectedTime = value;
-                OnPropertyChanged(nameof(SelectedTime));
-                _ = LoadOnceAsync();
-            }
-        }
-        private DateTime SelectedDateTime => SelectedDate + SelectedTime;
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string n) =>

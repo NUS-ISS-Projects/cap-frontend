@@ -11,8 +11,6 @@ public partial class MainWindow : Window
             InitializeComponent();
             _vm = new MainViewModel();
             DataContext = _vm;
-             // Auto‐start streaming on launch:
-            _vm.PlayCommand.Execute(null);
         }
     }
 }
