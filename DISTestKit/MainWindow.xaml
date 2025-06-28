@@ -15,10 +15,10 @@
     <Window.Resources>
         <CollectionViewSource x:Key="LogsCollection"
                             Source="{Binding LogsVm.Packets}">
-        <CollectionViewSource.SortDescriptions>
-            <scm:SortDescription PropertyName="No"
+            <CollectionViewSource.SortDescriptions>
+                <scm:SortDescription PropertyName="No"
                                 Direction="Descending"/>
-        </CollectionViewSource.SortDescriptions>
+            </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
     </Window.Resources>
 
@@ -37,10 +37,10 @@
         <!-- Top toolbar or header -->
         <Grid Grid.Row="0" Grid.ColumnSpan="3" Margin="0,10,0,20">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" /> 
-                <RowDefinition Height="1"    /> 
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="1"    />
             </Grid.RowDefinitions>
-        <ui:TextBlock
+            <ui:TextBlock
                 Text="DIS Dashboard"
                 Grid.Row="0"
                 Grid.Column="0"
@@ -50,7 +50,7 @@
                 VerticalAlignment="Center"
                 HorizontalAlignment="Left"
                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <StackPanel 
+            <StackPanel 
             Orientation="Horizontal" 
             Grid.Row="0"
             Grid.Column="0"
@@ -59,20 +59,20 @@
             VerticalAlignment="Center"
             Background="{DynamicResource SystemControlAccentBaseHighBrush}" 
             Margin="0,10,20,30">
-            <DatePicker
+                <DatePicker
                 x:Name="DtPicker"
                 IsEnabled="{Binding IsPaused}" 
                 Width="200"
                 Margin="0,0,12,0"
                 SelectedDate="{Binding SelectedDate, Mode=TwoWay}" />
-            <xtk:TimePicker 
+                <xtk:TimePicker 
                 IsEnabled="{Binding IsPaused}" 
                 Value="{Binding SelectedTime, Mode=TwoWay}" 
                 Format="Custom" 
                 FormatString="HH:mm"
                 Width="200"
                 Margin="0,0,5,0"/>
-            <ui:Button
+                <ui:Button
                 Command="{Binding PlayCommand}"
                 MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
                 MinWidth="50"
@@ -82,11 +82,11 @@
                 BorderThickness="1"
                 Background="{DynamicResource SystemControlAltLowBrush}" 
                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                <ui:Button.Icon>
-                    <ui:SymbolIcon Symbol="Play32" />
-                </ui:Button.Icon>
-            </ui:Button>
-            <ui:Button
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="Play32" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button
                 Command="{Binding AnalyzeCommand}"
                 MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
                 MinWidth="50"
@@ -96,11 +96,11 @@
                 BorderThickness="1"
                 Background="{DynamicResource SystemControlAltLowBrush}" 
                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                <ui:Button.Icon>
-                    <ui:SymbolIcon Symbol="SlideSearch28" />
-                </ui:Button.Icon>
-            </ui:Button>
-            <ui:Button
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="SlideSearch28" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button
                 Command="{Binding RefreshCommand}"
                 MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
                 MinWidth="50"
@@ -110,12 +110,12 @@
                 BorderThickness="1"
                 Background="{DynamicResource SystemControlAltLowBrush}" 
                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                <ui:Button.Icon>
-                    <ui:SymbolIcon Symbol="ArrowCounterclockwise48" />
-                </ui:Button.Icon>
-            </ui:Button>
-        </StackPanel>
-        <Border
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="ArrowCounterclockwise48" />
+                    </ui:Button.Icon>
+                </ui:Button>
+            </StackPanel>
+            <Border
             Grid.Row="1"
             Grid.Column="0"
             Grid.ColumnSpan="3"
@@ -135,88 +135,38 @@
             <!-- 1) Total PDUs in last minute -->
             <Border Grid.Column="0" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
                 <StackPanel>
-                <TextBlock Text="Total PDUs (1m)" FontWeight="Bold"/>
-                <TextBlock Text="{Binding TotalPdusLastMinute}" FontSize="24"/>
+                    <TextBlock Text="Total PDUs (1m)" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding TotalPdusLastMinute}" FontSize="24"/>
                 </StackPanel>
             </Border>
 
             <!-- 2) Average Rate -->
             <Border Grid.Column="1" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
                 <StackPanel>
-                <TextBlock Text="Avg. Rate (1m)" FontWeight="Bold"/>
-                <TextBlock Text="{Binding AveragePdusPerSecond}" FontSize="24"/>
+                    <TextBlock Text="Avg. Rate (1m)" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding AveragePdusPerSecond}" FontSize="24"/>
                 </StackPanel>
             </Border>
 
             <!-- 3) Peak Rate -->
             <Border Grid.Column="2" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
                 <StackPanel>
-                <TextBlock Text="Peak Rate (1m)" FontWeight="Bold"/>
-                <TextBlock Text="{Binding PeakPdusPerSecond}" FontSize="24"/>
+                    <TextBlock Text="Peak Rate (1m)" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding PeakPdusPerSecond}" FontSize="24"/>
                 </StackPanel>
             </Border>
 
             <!-- 4) Entity vs Fire breakdown -->
             <Border Grid.Column="3" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
                 <StackPanel>
-                <TextBlock Text="Type Breakdown" FontWeight="Bold"/>
-                <TextBlock Text="{Binding EntityVsFireSummary}" FontSize="16"/>
+                    <TextBlock Text="Type Breakdown" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding EntityVsFireSummary}" FontSize="16"/>
                 </StackPanel>
             </Border>
         </Grid>
 
-        <!-- ─────── Charts ─────── -->
-
-        <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="20,20,0,0" Height="400">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-
-            <!-- ─────── Chart 1: Volume ─────── -->
-            <StackPanel Grid.Column="0" >
-                <TextBlock
-                    Text="Volume"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Margin="0,0,0,4"
-                    HorizontalAlignment="Left" />
-                <livechart:CartesianChart Series="{Binding DataVolumeVm.SeriesCollection}" LegendLocation="Right" Height="200">
-                    <livechart:CartesianChart.AxisX>
-                        <livechart:Axis Title="Time"
-                            LabelFormatter="{Binding DataVolumeVm.XFormatter}"
-                            DisableAnimations="True"
-                            MinValue="{Binding DataVolumeVm.MinX, Mode=OneWay}"
-                            MaxValue="{Binding DataVolumeVm.MaxX, Mode=OneWay}" />
-                    </livechart:CartesianChart.AxisX>
-
-                    <livechart:CartesianChart.AxisY>
-                        <livechart:Axis Title="Messages/Sec" MinValue="0" Separator="{Binding DataVolumeVm.IntSeparator}"/>
-                    </livechart:CartesianChart.AxisY>
-                </livechart:CartesianChart>
-            </StackPanel>
-
-            <!-- ─────── Chart 2: PDU-Type Comparison Bar Chart ─────── -->
-            <StackPanel Grid.Column="1">
-                <TextBlock
-                    Text="PDU Type Counts"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Margin="0,0,0,4"
-                    HorizontalAlignment="Left" />
-                <lvc:CartesianChart
-                    Series="{Binding ComparisonVm.Series}"
-                    XAxes="{Binding ComparisonVm.XAxes}"
-                    YAxes="{Binding ComparisonVm.YAxes}"
-                    AnimationsSpeed="00:00:00"
-                    EasingFunction="{x:Null}"
-                    Height="200"
-                    Background="Transparent" />
-            </StackPanel>
-        </Grid>
-
         <!--DIS messages received-->
-        <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Margin="10,10,10,10">
+        <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="10,10,10,10">
             <ui:DataGrid
                     ItemsSource="{Binding LogsVm.Packets}"
                     AutoGenerateColumns="False"
@@ -230,12 +180,12 @@
                     BorderBrush="Gray"
                     BorderThickness="1"
                     Background="White"
-                    Foreground="Black">
+                    Foreground="Black" Margin="10,0,0,0">
 
                 <ui:DataGrid.ColumnHeaderStyle>
                     <Style TargetType="DataGridColumnHeader">
                         <Setter Property="BorderBrush" Value="LightGray"/>
-                        <Setter Property="BorderThickness" Value="0,0,0,1"/> 
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
                         <Setter Property="Padding" Value="4,0"/>
                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
                         <Setter Property="FontWeight" Value="Bold"/>
@@ -276,9 +226,107 @@
                     <DataGridTextColumn
                         Header="Info"
                         Binding="{Binding Info}"
-                        Width="*" /> 
+                        Width="*" />
                 </DataGrid.Columns>
             </ui:DataGrid>
+        </Grid>
+        <!-- ─────── Logs breakdown and Chart ─────── -->
+
+        <Grid Grid.Row="3" Grid.ColumnSpan="2" Margin="20,20,0,0" Height="400">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ─────── Part 1: Logs breakdown ─────── -->
+            <StackPanel Grid.Column="0" Margin="0,0,0,133">
+                <TextBlock
+                     Text=""
+                     FontSize="16"
+                     FontWeight="Bold"
+                     Margin="0,0,0,4"
+                     HorizontalAlignment="Left" />
+                <ui:DataGrid
+                    ItemsSource="{Binding LogsVm.Packets}"
+                    AutoGenerateColumns="False"
+                    CanUserAddRows="False"
+                    IsReadOnly="True"
+                    GridLinesVisibility="Horizontal"
+                    HeadersVisibility="Column"
+                    RowHeight="30"
+                    ColumnHeaderHeight="30"
+                    FontSize="12"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    Background="White"
+                    Foreground="Black" Height="202" Width="463">
+
+                    <ui:DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="{x:Type DataGridColumnHeader}">
+                            <Setter Property="BorderBrush" Value="LightGray"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            <Setter Property="Padding" Value="4,0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </Style>
+                    </ui:DataGrid.ColumnHeaderStyle>
+
+                    <ui:DataGrid.Columns>
+                        <DataGridTextColumn
+                            Header="No"
+                            Binding="{Binding No}"
+                            Width="100" />
+
+                        <DataGridTextColumn
+                            Header="Time"
+                            Binding="{Binding Time, StringFormat=HH:mm:ss}"
+                            Width="100" />
+
+                        <DataGridTextColumn 
+                            Header="Type" 
+                            Binding="{Binding Type}" 
+                            Width="100"/>
+
+                        <DataGridTextColumn
+                            Header="Source"
+                            Binding="{Binding Source}"
+                            Width="100" />
+
+                        <DataGridTextColumn
+                            Header="Destination"
+                            Binding="{Binding Destination}"
+                            Width="100" />
+
+                        <DataGridTextColumn
+                            Header="Protocol"
+                            Binding="{Binding Protocol}"
+                            Width="100" />
+
+                        <DataGridTextColumn
+                            Header="Info"
+                            Binding="{Binding Info}"
+                            Width="*" />
+                    </ui:DataGrid.Columns>
+                </ui:DataGrid>
+            </StackPanel>
+            
+            <!-- ─────── Part 2: PDU Type Counts Bar chart ─────── -->
+            <StackPanel Grid.Column="1" Margin="0,0,0,133">
+                <TextBlock
+                     Text="PDU Type Counts"
+                     FontSize="16"
+                     FontWeight="Bold"
+                     Margin="0,0,0,4"
+                     HorizontalAlignment="Left" />
+                <lvc:CartesianChart
+                     Series="{Binding ComparisonVm.Series}"
+                     XAxes="{Binding ComparisonVm.XAxes}"
+                     YAxes="{Binding ComparisonVm.YAxes}"
+                     AnimationsSpeed="00:00:00"
+                     EasingFunction="{x:Null}"
+                     Height="200"
+                     Background="Transparent" Width="468" />
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>
