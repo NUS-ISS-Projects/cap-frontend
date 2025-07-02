@@ -6,6 +6,7 @@
     xmlns:lcs="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
     xmlns:livechart="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
     xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
+    xmlns:pages="clr-namespace:DISTestKit.Pages"
     xmlns:xtk="http://schemas.xceed.com/wpf/xaml/toolkit"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     Title="ST Engineering DIS System"
@@ -21,33 +22,6 @@
                                 Direction="Descending"/>
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
-
-        <!-- Drop‐shadow effect -->
-        <DropShadowEffect x:Key="Shadow"
-                      Color="#000000"
-                      BlurRadius="12"
-                      ShadowDepth="2"
-                      Opacity="0.15"/>
-
-        <!-- Rounded button style-->
-        <Style x:Key="RoundedButtonStyle" TargetType="Button">
-            <Setter Property="BorderBrush" Value="#EEF1FB" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border 
-                            Background="{TemplateBinding Background}" 
-                            BorderBrush="{TemplateBinding BorderBrush}" 
-                            BorderThickness="{TemplateBinding BorderThickness}" 
-                            CornerRadius="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Grid>
@@ -94,159 +68,10 @@
             </StackPanel>
         </Border>
 
-        <!-- Top toolbar or header -->
-        <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="10,10,0,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <StackPanel 
-                Orientation="Horizontal" 
-                Grid.Row="0"
-                Grid.Column="0"
-                Grid.ColumnSpan="3"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Margin="0,10,0,0">
-
-                <Button x:Name="TodayButton"
-                    Content="Today"
-                    MinWidth="50"
-                    FontWeight="Bold"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30">
-                </Button>
-                <Button x:Name="WeekButton"
-                    Content="Week"
-                    MinWidth="50"
-                    FontWeight="Bold"
-                    Margin="10,0,0,0"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30">
-                </Button>
-                <Button x:Name="MonthButton"
-                    Content="Month"
-                    MinWidth="50"
-                    FontWeight="Bold"
-                    Margin="10,0,0,0"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30">
-                </Button>
-
-                <Button x:Name="PlayButton"
-                    Command="{Binding PlayCommand}"
-                    MinWidth="50"
-                    Margin="10,0,10,0"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30"
-                    >
-                    <ui:SymbolIcon Symbol="Play32" Width="25" Height="25"/>
-                </Button>
-                <Button x:Name="PlayButton1"
-                    Command="{Binding RefreshCommand}"
-                    MinWidth="50"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30"
-                    >
-                    <ui:SymbolIcon Symbol="ArrowCounterclockwise48" Width="25" Height="25"/>
-                </Button>
-            </StackPanel>
-        </Grid>
-
-        <!-- ─────── Volume Line chart ─────── -->
-        <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3">
-            <StackPanel Margin="0,0,0,0">
-                <TextBlock
-                     Text="Traffic Volume"
-                     FontSize="16"
-                     FontWeight="Bold"
-                     FontFamily="Arial"
-                     Margin="0,0,0,4"
-                     HorizontalAlignment="Left" />
-                <lvc:CartesianChart
-                     Series="{Binding VolumeVm.Series}"
-                     XAxes="{Binding VolumeVm.XAxes}"
-                     YAxes="{Binding VolumeVm.YAxes}"
-                     AnimationsSpeed="00:00:00"
-                     EasingFunction="{x:Null}"
-                     Height="200"
-                     Background="White" />
-            </StackPanel>
-        </Grid>
-
-        <!-- ─────── Logs ─────── -->
-
-        <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,10">
-            <Border CornerRadius="8" Background="White" Effect="{StaticResource Shadow}">
-                <StackPanel>
-                    <DataGrid
-                    ItemsSource="{Binding LogsVm.Packets}"
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    IsReadOnly="True"
-                    GridLinesVisibility="Horizontal"
-                    HeadersVisibility="Column"
-                    RowHeight="30"
-                    ColumnHeaderHeight="30"
-                    FontSize="12"
-                    Background="White"
-                    MinHeight="240">
-
-                        <DataGrid.ColumnHeaderStyle>
-                            <Style TargetType="{x:Type DataGridColumnHeader}">
-                                <Setter Property="BorderBrush" Value="LightGray"/>
-                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="Padding" Value="4,0"/>
-                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                                <Setter Property="FontWeight" Value="Bold"/>
-                            </Style>
-                        </DataGrid.ColumnHeaderStyle>
-
-                        <DataGrid.Columns>
-                            <DataGridTextColumn
-                            Header="No"
-                            Binding="{Binding No}"
-                            Width="50" />
-
-                            <DataGridTextColumn
-                            Header="Time"
-                            Binding="{Binding Time, StringFormat=HH:mm:ss}"
-                            Width="100" />
-
-                            <DataGridTextColumn 
-                            Header="Type" 
-                            Binding="{Binding Type}" 
-                            Width="100"/>
-
-                            <DataGridTextColumn
-                            Header="Source"
-                            Binding="{Binding Source}"
-                            Width="100" />
-
-                            <DataGridTextColumn
-                            Header="Destination"
-                            Binding="{Binding Destination}"
-                            Width="100" />
-
-                            <DataGridTextColumn
-                            Header="Protocol"
-                            Binding="{Binding Protocol}"
-                            Width="100" />
-
-                            <DataGridTextColumn
-                            Header="Info"
-                            Binding="{Binding Info}"
-                            Width="*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </StackPanel>
-            </Border>
-        </Grid>
-        
-        <!-- Log Session details -->
-        <Border Grid.Row="1" Grid.RowSpan="4" Grid.Column="4" Background="#FFFFFF" CornerRadius="8" Margin="10,20,10,10" Effect="{StaticResource Shadow}">
-            <StackPanel>
-            </StackPanel>
-        </Border>
+        <pages:DashboardPage
+            Grid.Row="2" Grid.Column="1"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="4"
+            Background="Transparent"/>
     </Grid>
 </Window>
