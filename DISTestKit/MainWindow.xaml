@@ -6,279 +6,104 @@
     xmlns:lcs="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
     xmlns:livechart="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
     xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
+    xmlns:pages="clr-namespace:DISTestKit.Pages"
     xmlns:xtk="http://schemas.xceed.com/wpf/xaml/toolkit"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
-    Title="DIS Dashboard"
-    Height="800"
+    Title="ST Engineering DIS System"
+    Height="600"
     Width="1000"
->
+    Background="#e8eaf0">
+
     <Window.Resources>
         <CollectionViewSource x:Key="LogsCollection"
                             Source="{Binding LogsVm.Packets}">
-        <CollectionViewSource.SortDescriptions>
-            <scm:SortDescription PropertyName="No"
+            <CollectionViewSource.SortDescriptions>
+                <scm:SortDescription PropertyName="No"
                                 Direction="Descending"/>
-        </CollectionViewSource.SortDescriptions>
+            </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
     </Window.Resources>
 
-    <Grid Margin="0,0,0,0">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="300" />
-            <RowDefinition Height="250" />
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="235"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition />
-            <ColumnDefinition />
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Top toolbar or header -->
-        <Grid Grid.Row="0" Grid.ColumnSpan="3" Margin="0,10,0,20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" /> 
-                <RowDefinition Height="1"    /> 
-            </Grid.RowDefinitions>
-        <ui:TextBlock
-                Text="DIS Dashboard"
-                Grid.Row="0"
-                Grid.Column="0"
-                FontSize="24"
-                FontWeight="Bold"
-                Margin="20,0,0,20"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Left"
-                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <StackPanel 
-            Orientation="Horizontal" 
-            Grid.Row="0"
-            Grid.Column="0"
-            Grid.ColumnSpan="3"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Center"
-            Background="{DynamicResource SystemControlAccentBaseHighBrush}" 
-            Margin="0,10,20,30">
-            <DatePicker
-                x:Name="DtPicker"
-                IsEnabled="{Binding IsPaused}" 
-                Width="200"
-                Margin="0,0,12,0"
-                SelectedDate="{Binding SelectedDate, Mode=TwoWay}" />
-            <xtk:TimePicker 
-                IsEnabled="{Binding IsPaused}" 
-                Value="{Binding SelectedTime, Mode=TwoWay}" 
-                Format="Custom" 
-                FormatString="HH:mm"
-                Width="200"
-                Margin="0,0,5,0"/>
-            <ui:Button
-                Command="{Binding PlayCommand}"
-                MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
-                MinWidth="50"
-                Padding="8,0"
-                Margin="12,0,5,0"
-                BorderBrush="Gray"
-                BorderThickness="1"
-                Background="{DynamicResource SystemControlAltLowBrush}" 
-                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                <ui:Button.Icon>
-                    <ui:SymbolIcon Symbol="Play32" />
-                </ui:Button.Icon>
-            </ui:Button>
-            <ui:Button
-                Command="{Binding AnalyzeCommand}"
-                MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
-                MinWidth="50"
-                Padding="8,0"
-                Margin="0,0,5,0"
-                BorderBrush="Gray"
-                BorderThickness="1"
-                Background="{DynamicResource SystemControlAltLowBrush}" 
-                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                <ui:Button.Icon>
-                    <ui:SymbolIcon Symbol="SlideSearch28" />
-                </ui:Button.Icon>
-            </ui:Button>
-            <ui:Button
-                Command="{Binding RefreshCommand}"
-                MinHeight="{Binding ActualHeight, ElementName=DtPicker}"
-                MinWidth="50"
-                Padding="8,0"
-                Margin="0,0,12,0"
-                BorderBrush="Gray"
-                BorderThickness="1"
-                Background="{DynamicResource SystemControlAltLowBrush}" 
-                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                <ui:Button.Icon>
-                    <ui:SymbolIcon Symbol="ArrowCounterclockwise48" />
-                </ui:Button.Icon>
-            </ui:Button>
-        </StackPanel>
-        <Border
-            Grid.Row="1"
-            Grid.Column="0"
-            Grid.ColumnSpan="3"
-            Background="Gray"
-            Height="1" />
-        </Grid>
-
-        <!-- Metrics Cards -->
-        <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="10,0" Height="80">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-
-            <!-- 1) Total PDUs in last minute -->
-            <Border Grid.Column="0" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
-                <StackPanel>
-                <TextBlock Text="Total PDUs (1m)" FontWeight="Bold"/>
-                <TextBlock Text="{Binding TotalPdusLastMinute}" FontSize="24"/>
-                </StackPanel>
-            </Border>
-
-            <!-- 2) Average Rate -->
-            <Border Grid.Column="1" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
-                <StackPanel>
-                <TextBlock Text="Avg. Rate (1m)" FontWeight="Bold"/>
-                <TextBlock Text="{Binding AveragePdusPerSecond}" FontSize="24"/>
-                </StackPanel>
-            </Border>
-
-            <!-- 3) Peak Rate -->
-            <Border Grid.Column="2" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
-                <StackPanel>
-                <TextBlock Text="Peak Rate (1m)" FontWeight="Bold"/>
-                <TextBlock Text="{Binding PeakPdusPerSecond}" FontSize="24"/>
-                </StackPanel>
-            </Border>
-
-            <!-- 4) Entity vs Fire breakdown -->
-            <Border Grid.Column="3" Margin="5" Padding="10" Background="White" BorderBrush="LightGray" BorderThickness="1">
-                <StackPanel>
-                <TextBlock Text="Type Breakdown" FontWeight="Bold"/>
-                <TextBlock Text="{Binding EntityVsFireSummary}" FontSize="16"/>
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <!-- ─────── Charts ─────── -->
-
-        <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="20,20,0,0" Height="400">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-
-            <!-- ─────── Chart 1: Volume ─────── -->
-            <StackPanel Grid.Column="0" >
-                <TextBlock
-                    Text="Volume"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Margin="0,0,0,4"
-                    HorizontalAlignment="Left" />
-                <livechart:CartesianChart Series="{Binding DataVolumeVm.SeriesCollection}" LegendLocation="Right" Height="200">
-                    <livechart:CartesianChart.AxisX>
-                        <livechart:Axis Title="Time"
-                            LabelFormatter="{Binding DataVolumeVm.XFormatter}"
-                            DisableAnimations="True"
-                            MinValue="{Binding DataVolumeVm.MinX, Mode=OneWay}"
-                            MaxValue="{Binding DataVolumeVm.MaxX, Mode=OneWay}" />
-                    </livechart:CartesianChart.AxisX>
-
-                    <livechart:CartesianChart.AxisY>
-                        <livechart:Axis Title="Messages/Sec" MinValue="0" Separator="{Binding DataVolumeVm.IntSeparator}"/>
-                    </livechart:CartesianChart.AxisY>
-                </livechart:CartesianChart>
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" Background="#FFFFFF" CornerRadius="8" Effect="{StaticResource Shadow}">
+            <StackPanel>
+                <TextBlock Text="ST Engineering DIS System" FontFamily="Arial" FontSize="25" FontWeight="Bold" Margin="10,10,0,10" HorizontalAlignment="Left"/>
             </StackPanel>
+        </Border>
 
-            <!-- ─────── Chart 2: PDU-Type Comparison Bar Chart ─────── -->
-            <StackPanel Grid.Column="1">
-                <TextBlock
-                    Text="PDU Type Counts"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Margin="0,0,0,4"
-                    HorizontalAlignment="Left" />
-                <lvc:CartesianChart
-                    Series="{Binding ComparisonVm.Series}"
-                    XAxes="{Binding ComparisonVm.XAxes}"
-                    YAxes="{Binding ComparisonVm.YAxes}"
-                    AnimationsSpeed="00:00:00"
-                    EasingFunction="{x:Null}"
-                    Height="200"
-                    Background="Transparent" />
+        <!-- Side Navigation -->
+        <Border Grid.Row="1" Grid.Column="0" Grid.RowSpan="4" Background="#FFFFFF" CornerRadius="8" Margin="10,20,10,10" Effect="{StaticResource Shadow}">
+            <StackPanel>
+                <TextBlock Text="Hello, Cindy!" FontFamily="Arial" FontSize="15" FontWeight="Bold" Margin="0,20,0,20" HorizontalAlignment="Center"/>
+                <Button x:Name="DashboardButton" Click="DashboardButton_Click" Style="{StaticResource NavigationButton}">
+                    <Grid Width="120" Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="DataHistogram20" Width="20" Height="20" Margin="0,0,5,0"/>
+                        <TextBlock Grid.Column="1" Text="Dashboard" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </Grid>
+                </Button>
+                <Button x:Name="ForecastButton" Click="ForecastButton_Click" Style="{StaticResource NavigationButton}">
+                    <Grid Width="120" Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="BrainCircuit20" Width="20" Height="20" Margin="0,0,5,0"/>
+                        <TextBlock Grid.Column="1" Text="Forecast" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </Grid>
+                </Button>
+                <Button x:Name="NotificationButton" Style="{StaticResource NavigationButton}">
+                    <Grid Width="120" Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="ServiceBell20" Width="20" Height="20" Margin="0,0,5,0"/>
+                        <TextBlock Grid.Column="1" Text="Notifcations" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </Grid>
+                </Button>
+                <Button x:Name="SettingButton" Style="{StaticResource NavigationButton}">
+                    <Grid Width="120" Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="Settings20" Width="20" Height="20" Margin="0,0,5,0"/>
+                        <TextBlock Grid.Column="1" Text="Settings" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </Grid>
+                </Button>
             </StackPanel>
-        </Grid>
+        </Border>
 
-        <!--DIS messages received-->
-        <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Margin="10,10,10,10">
-            <ui:DataGrid
-                    ItemsSource="{Binding LogsVm.Packets}"
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    IsReadOnly="True"
-                    GridLinesVisibility="Horizontal"
-                    HeadersVisibility="Column"
-                    RowHeight="30"
-                    ColumnHeaderHeight="30"
-                    FontSize="12"
-                    BorderBrush="Gray"
-                    BorderThickness="1"
-                    Background="White"
-                    Foreground="Black">
-
-                <ui:DataGrid.ColumnHeaderStyle>
-                    <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="BorderBrush" Value="LightGray"/>
-                        <Setter Property="BorderThickness" Value="0,0,0,1"/> 
-                        <Setter Property="Padding" Value="4,0"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                        <Setter Property="FontWeight" Value="Bold"/>
-                    </Style>
-                </ui:DataGrid.ColumnHeaderStyle>
-
-                <DataGrid.Columns>
-                    <DataGridTextColumn
-                        Header="No"
-                        Binding="{Binding No}"
-                        Width="100" />
-
-                    <DataGridTextColumn
-                        Header="Time"
-                        Binding="{Binding Time, StringFormat=HH:mm:ss}"
-                        Width="100" />
-
-                    <DataGridTextColumn 
-                        Header="Type" 
-                        Binding="{Binding Type}" 
-                        Width="100"/>
-
-                    <DataGridTextColumn
-                        Header="Source"
-                        Binding="{Binding Source}"
-                        Width="100" />
-
-                    <DataGridTextColumn
-                        Header="Destination"
-                        Binding="{Binding Destination}"
-                        Width="100" />
-
-                    <DataGridTextColumn
-                        Header="Protocol"
-                        Binding="{Binding Protocol}"
-                        Width="100" />
-
-                    <DataGridTextColumn
-                        Header="Info"
-                        Binding="{Binding Info}"
-                        Width="*" /> 
-                </DataGrid.Columns>
-            </ui:DataGrid>
-        </Grid>
+        <pages:DashboardPage
+            x:Name="DashboardView"
+            Grid.Row="2" Grid.Column="1"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="4"
+            Background="Transparent"/>
+        <pages:ForecastPage
+            x:Name="ForecastView"
+            Grid.Row="2" Grid.Column="1"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="4"
+            Visibility="Collapsed"
+            Background="Transparent"/>
     </Grid>
 </Window>

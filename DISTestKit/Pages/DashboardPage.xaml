@@ -1,0 +1,152 @@
+﻿<UserControl
+    x:Class="DISTestKit.Pages.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+    xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
+    xmlns:xtk="http://schemas.xceed.com/wpf/xaml/toolkit"
+    xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+    Background="Transparent">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Top toolbar -->
+            <RowDefinition Height="235"/>
+            <!-- Traffic Volume chart -->
+            <RowDefinition Height="*"/>
+            <!-- Logs + Detail pane -->
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Top toolbar or header -->
+        <Grid Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="10,10,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel 
+          Orientation="Horizontal" 
+          Grid.Row="0"
+          Grid.ColumnSpan="3"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Center"
+          Margin="0,10,0,0">
+
+                <Button x:Name="TodayButton"
+            Content="Today"
+            MinWidth="50"
+            FontWeight="Bold"
+            Style="{StaticResource RoundedButtonStyle}"
+            Background="white" Height="30"/>
+                <Button x:Name="WeekButton"
+            Content="Week"
+            MinWidth="50"
+            FontWeight="Bold"
+            Margin="10,0,0,0"
+            Style="{StaticResource RoundedButtonStyle}"
+            Background="white" Height="30"/>
+                <Button x:Name="MonthButton"
+            Content="Month"
+            MinWidth="50"
+            FontWeight="Bold"
+            Margin="10,0,0,0"
+            Style="{StaticResource RoundedButtonStyle}"
+            Background="white" Height="30"/>
+
+                <Button x:Name="PlayButton"
+            Command="{Binding PlayCommand}"
+            MinWidth="50"
+            Margin="10,0,10,0"
+            Style="{StaticResource RoundedButtonStyle}"
+            Background="white" Height="30">
+                    <ui:SymbolIcon Symbol="Play32" Width="25" Height="25"/>
+                </Button>
+                <Button x:Name="PlayButton1"
+            Command="{Binding RefreshCommand}"
+            MinWidth="50"
+            Style="{StaticResource RoundedButtonStyle}"
+            Background="white" Height="30">
+                    <ui:SymbolIcon Symbol="ArrowCounterclockwise48" Width="25" Height="25"/>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ─────── Traffic Volume ─────── -->
+        <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3">
+            <StackPanel>
+                <TextBlock
+             Text="Traffic Volume"
+             FontSize="16"
+             FontWeight="Bold"
+             FontFamily="Arial"
+             Margin="0,0,0,4"
+             HorizontalAlignment="Left" />
+                <lvc:CartesianChart
+             Series="{Binding VolumeVm.Series}"
+             XAxes="{Binding VolumeVm.XAxes}"
+             YAxes="{Binding VolumeVm.YAxes}"
+             AnimationsSpeed="00:00:00"
+             EasingFunction="{x:Null}"
+             Height="200"
+             Background="White" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ─────── Logs ─────── -->
+        <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,10">
+            <Border CornerRadius="8" Background="White" Effect="{StaticResource Shadow}">
+                <StackPanel>
+                    <DataGrid
+            ItemsSource="{Binding LogsVm.Packets}"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            IsReadOnly="True"
+            GridLinesVisibility="Horizontal"
+            HeadersVisibility="Column"
+            RowHeight="30"
+            ColumnHeaderHeight="30"
+            FontSize="12"
+            Background="White"
+            MinHeight="240">
+
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="{x:Type DataGridColumnHeader}">
+                                <Setter Property="BorderBrush" Value="LightGray"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="Padding" Value="4,0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="No"         Binding="{Binding No}"           Width="50" />
+                            <DataGridTextColumn Header="Time"       Binding="{Binding Time, StringFormat=HH:mm:ss}" Width="100" />
+                            <DataGridTextColumn Header="Type"       Binding="{Binding Type}"         Width="100"/>
+                            <DataGridTextColumn Header="Source"     Binding="{Binding Source}"       Width="100" />
+                            <DataGridTextColumn Header="Destination" Binding="{Binding Destination}"  Width="100" />
+                            <DataGridTextColumn Header="Protocol"   Binding="{Binding Protocol}"     Width="100" />
+                            <DataGridTextColumn Header="Info"       Binding="{Binding Info}"         Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Log Session details -->
+        <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="4"
+            Background="#FFFFFF"
+            CornerRadius="8"
+            Margin="10,20,10,10"
+            Effect="{StaticResource Shadow}">
+            <StackPanel>
+                <!-- your detail content here -->
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

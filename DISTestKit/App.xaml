@@ -6,11 +6,43 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
+
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Light" />
-                <!-- load all the WPF-UI controls -->
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
+
+            <DropShadowEffect x:Key="Shadow"
+                        Color="#000000"
+                        BlurRadius="12"
+                        ShadowDepth="2"
+                        Opacity="0.15"/>
+
+            <Style x:Key="RoundedButtonStyle" TargetType="Button">
+                <Setter Property="BorderBrush" Value="#EEF1FB" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border 
+                Background="{TemplateBinding Background}" 
+                BorderBrush="{TemplateBinding BorderBrush}" 
+                BorderThickness="{TemplateBinding BorderThickness}" 
+                CornerRadius="5">
+                                <ContentPresenter 
+                  HorizontalAlignment="Center" 
+                  VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="NavigationButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -5,7 +5,7 @@ using System.Windows.Input;
 using System.Timers;
 using LiveChartsCore.Defaults;
 using DISTestKit.Services;
-using DISTestKit.Model;
+using DISTestKit.ViewModel;
 using System.Linq;
 using Timer = System.Timers.Timer;
 
@@ -109,7 +109,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         public MainViewModel()
         {
-            _metricsSvc = new RealTimeMetricsService("http://34.98.89.167/api/acquisition/");
+            _metricsSvc = new RealTimeMetricsService("http://34.102.132.29/api/acquisition/");
             VolumeVm = new VolumeChartViewModel();
             ThroughputVm = new ThroughputChartViewModel();
             ComparisonVm = new PduTypeComparisonViewModel();

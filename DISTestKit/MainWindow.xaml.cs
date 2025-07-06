@@ -5,12 +5,19 @@ namespace DISTestKit
 {
 public partial class MainWindow : Window
     {
-        private readonly MainViewModel _vm;
         public MainWindow()
         {
             InitializeComponent();
-            _vm = new MainViewModel();
-            DataContext = _vm;
+        }
+        private void DashboardButton_Click(object sender, RoutedEventArgs e)
+        {
+            DashboardView.Visibility = Visibility.Visible;
+            ForecastView.Visibility = Visibility.Collapsed;
+        }
+        private void ForecastButton_Click(object sender, RoutedEventArgs e)
+        {
+            DashboardView.Visibility = Visibility.Collapsed;
+            ForecastView.Visibility = Visibility.Visible;
         }
     }
 }
