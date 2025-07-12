@@ -10,6 +10,23 @@ namespace DISTestKit.ViewModel
         public ObservableCollection<DisPacket> Packets { get; } = new ObservableCollection<DisPacket>();
         private int _nextNo = 1;
 
+        private DisPacket? _selectedPacket;
+        public DisPacket? SelectedPacket
+        {
+            get => _selectedPacket;
+            set
+            {
+                if (_selectedPacket != value) return;
+                _selectedPacket = value;
+                OnPropertyChanged();
+            }
+        }
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         public void Reset() => Packets.Clear();
 
         public void AddEntityState(long ts, int site, int app, int entity, 
