@@ -150,13 +150,27 @@
                  <Style TargetType="StackPanel">
                     <Setter Property="Visibility" Value="Visible"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{BindingLogsVm.SelectedPacket}" Value="{x:Null}">
+                        <DataTrigger Binding="{Binding LogsVm.SelectedPacket}" Value="{x:Null}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
             <TextBlock Text="Log Session Details" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+            <ItemsControl ItemsSource="{Binding LogsVm.SelectedPacket.Details}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
             </StackPanel>
         </Border>
     </Grid>

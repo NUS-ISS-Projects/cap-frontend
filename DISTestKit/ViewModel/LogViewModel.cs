@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using DISTestKit.Model;
 using DISTestKit.Services;
 
@@ -8,6 +11,7 @@ namespace DISTestKit.ViewModel
     public class LogViewModel
     {
         public ObservableCollection<DisPacket> Packets { get; } = new ObservableCollection<DisPacket>();
+        
         private int _nextNo = 1;
 
         private DisPacket? _selectedPacket;
@@ -16,9 +20,11 @@ namespace DISTestKit.ViewModel
             get => _selectedPacket;
             set
             {
-                if (_selectedPacket != value) return;
-                _selectedPacket = value;
-                OnPropertyChanged();
+                if (_selectedPacket != value)
+                {
+                    _selectedPacket = value;
+                    OnPropertyChanged();
+                }
             }
         }
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -36,7 +42,12 @@ namespace DISTestKit.ViewModel
             var src   = $"{site}-{app}-{entity}";
             var dest  = "NA";
             var info  = $"X={x:F2}, Y={y:F2}, Z={z:F2}";
-            AddCommon(ts, PacketType.EntityState, src, dest, proto, 0, info);
+            var details = new Dictionary<string, object>
+            {
+                { "Entity ID", src },
+                { "Location", $"X={x:F2}, Y={y:F2}, Z={z:F2}" }
+            };
+            AddCommon(ts, PacketType.EntityState, src, dest, proto, 0, info, details);
         }
 
         public void AddFireEvent(long ts, int fSite,int fApp,int fEntity,
@@ -46,12 +57,19 @@ namespace DISTestKit.ViewModel
             var proto = "FireEventPdu";
             var src   = $"{fSite}-{fApp}-{fEntity}";
             var dest  = $"{tSite}-{tApp}-{tEntity}";
-            var info  = $"Munition={mSite}-{mApp}-{mEntity}";
-            AddCommon(ts, PacketType.FireEvent, src, dest, proto, 0, info);
+            var munition = $"{mSite}-{mApp}-{mEntity}";
+            var info  = $"Munition={munition}";
+            var details = new Dictionary<string, object>
+            {
+                { "Firing Entity ID", src },
+                { "Target Entity ID", dest },
+                { "Munition", munition }
+            };
+            AddCommon(ts, PacketType.FireEvent, src, dest, proto, 0, info, details);
         }
 
         private void AddCommon(long ts, PacketType type, string src, string dest, 
-                       string proto, int len, string info)
+                       string proto, int len, string info, Dictionary<string, object> details)
         {
             long epoch = RealTimeMetricsService.FromDisAbsoluteTimestamp(ts);
             var dt = DateTimeOffset.FromUnixTimeSeconds(epoch).LocalDateTime;
@@ -62,7 +80,8 @@ namespace DISTestKit.ViewModel
                 Source      = src,
                 Destination = dest,
                 Protocol    = proto,
-                Info        = info
+                Info        = info,
+                Details     = details
             });
         }
     }

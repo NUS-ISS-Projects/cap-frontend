@@ -13,5 +13,6 @@ namespace DISTestKit.Model
         public string Destination { get; set; } = string.Empty;
         public string Protocol { get; set; } = string.Empty;
         public string Info { get; set; } = string.Empty;
+        public Dictionary<string,object> Details { get; set; } = [];
     }
 }
