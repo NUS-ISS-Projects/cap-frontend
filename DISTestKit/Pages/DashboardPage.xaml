@@ -128,11 +128,10 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="No"         Binding="{Binding No}"           Width="50" />
                             <DataGridTextColumn Header="Time"       Binding="{Binding Time, StringFormat=HH:mm:ss}" Width="100" />
-                            <DataGridTextColumn Header="Type"       Binding="{Binding Type}"         Width="100"/>
+                            <DataGridTextColumn Header="PDU Type"       Binding="{Binding PDUType}"  Width="100"/>
                             <DataGridTextColumn Header="Source"     Binding="{Binding Source}"       Width="100" />
-                            <DataGridTextColumn Header="Destination" Binding="{Binding Destination}"  Width="100" />
+                            <DataGridTextColumn Header="Destination" Binding="{Binding Destination}" Width="100" />
                             <DataGridTextColumn Header="Protocol"   Binding="{Binding Protocol}"     Width="100" />
-                            <DataGridTextColumn Header="Info"       Binding="{Binding Info}"         Width="*" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>
@@ -160,12 +159,12 @@
             <ItemsControl ItemsSource="{Binding LogsVm.SelectedPacket.Details}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Grid Margin="5">
+                        <Grid Margin="2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" Margin="0,0,5,0"/>
                             <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
                         </Grid>
                     </DataTemplate>

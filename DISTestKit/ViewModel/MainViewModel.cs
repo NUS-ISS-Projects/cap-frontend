@@ -139,30 +139,22 @@ public class MainViewModel : INotifyPropertyChanged
             var endDt = EndDateTime;
 
             // Convert to DIS timestamps
-            var startTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(
-                new DateTimeOffset(startDt).ToUnixTimeSeconds());
-            var endTs = RealTimeMetricsService.ToDisAbsoluteTimestamp(
-                new DateTimeOffset(endDt).ToUnixTimeSeconds());
+             var startUnixTs = new DateTimeOffset(startDt).ToUnixTimeSeconds();
+             var endUnixTs = new DateTimeOffset(endDt).ToUnixTimeSeconds();
 
             // Fetch and push historical rows
-            var states = await _metricsSvc.GetHistoricalEntityStatesAsync(startTs, endTs);
-            var fires = await _metricsSvc.GetHistoricalFireEventsAsync(startTs, endTs);
+            var raw = await RealTimeMetricsService.GetHistoricalLogsAsync(startUnixTs, endUnixTs);
 
             App.Current.Dispatcher.Invoke(() =>
                 {
-                    foreach (var s in states)
-                        LogsVm.AddEntityState(
-                            s.Timestamp, s.Site, s.Application, s.Entity,
-                            s.LocationX, s.LocationY, s.LocationZ);
-
-                    foreach (var f in fires)
-                        LogsVm.AddFireEvent(
-                            f.Timestamp,
-                            f.FiringSite, f.FiringApplication, f.FiringEntity,
-                            f.TargetSite, f.TargetApplication, f.TargetEntity,
-                            f.MunitionSite, f.MunitionApplication, f.MunitionEntity);
+                    foreach (var m in raw)
+                        LogsVm.AddPacket(
+                                m.Id,
+                                m.PDUType,
+                                m.Length,
+                                m.recordDetails);
                 });
-            _lastTimestamp = endTs;
+            _lastTimestamp = RealTimeMetricsService.ToDisAbsoluteTimestamp(endUnixTs);
         }
 
         private async Task OnTickAsync()
@@ -185,12 +177,9 @@ public class MainViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(PeakPdusPerSecond));
 
                 var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var nowTs   = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
-                var newStates = await _metricsSvc.GetHistoricalEntityStatesAsync(_lastTimestamp, nowTs);
-                var newFires  = await _metricsSvc.GetHistoricalFireEventsAsync   (_lastTimestamp, nowTs);
-                var entityCount = newStates.LongCount();
-                var fireCount   = newFires .LongCount();
-                EntityVsFireSummary = $"{entityCount} / {fireCount}";
+                var lastUnixTimestamp = RealTimeMetricsService.FromDisAbsoluteTimestamp(_lastTimestamp);
+                var newLogs = await RealTimeMetricsService.GetHistoricalLogsAsync(lastUnixTimestamp, nowSecs);
+
                 OnPropertyChanged(nameof(EntityVsFireSummary));
 
                 App.Current.Dispatcher.Invoke(() =>
@@ -199,25 +188,11 @@ public class MainViewModel : INotifyPropertyChanged
                     ThroughputVm.Update(new DateTimePoint(nowLocal, dto.AveragePduRatePerSecondLastSixtySeconds));
                     DataVolumeVm.AddDataPoint(nowLocal, (int)(dto.PdusInLastSixtySeconds/60));
 
-                    ComparisonVm.UpdateCounts(entityCount, fireCount);
-
-                    foreach (var s in newStates)
-                    LogsVm.AddEntityState(
-                        s.Timestamp, s.Site, s.Application, s.Entity,
-                        s.LocationX, s.LocationY, s.LocationZ);
-
-                    foreach (var f in newFires)
-                    LogsVm.AddFireEvent(
-                        f.Timestamp,
-                        f.FiringSite, f.FiringApplication, f.FiringEntity,
-                        f.TargetSite,  f.TargetApplication,  f.TargetEntity,
-                        f.MunitionSite,f.MunitionApplication,f.MunitionEntity);
+                    foreach (var m in newLogs)
+                    LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.recordDetails);
                 });
 
-                // Advance bookmark
-                var maxState = newStates.Select(s => s.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
-                var maxFire  = newFires .Select(f => f.Timestamp).DefaultIfEmpty(_lastTimestamp).Max();
-                _lastTimestamp = Math.Max(_lastTimestamp, Math.Max(maxState, maxFire));
+                _lastTimestamp = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
             }
             catch
                 {

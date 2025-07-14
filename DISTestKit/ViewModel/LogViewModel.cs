@@ -1,17 +1,16 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using DISTestKit.Model;
-using DISTestKit.Services;
 
 namespace DISTestKit.ViewModel
 {
-    public class LogViewModel
+    public class LogViewModel : INotifyPropertyChanged
     {
-        public ObservableCollection<DisPacket> Packets { get; } = new ObservableCollection<DisPacket>();
-        
+        public ObservableCollection<DisPacket> Packets { get; }
+            = new ObservableCollection<DisPacket>();
+
         private int _nextNo = 1;
 
         private DisPacket? _selectedPacket;
@@ -27,62 +26,50 @@ namespace DISTestKit.ViewModel
                 }
             }
         }
+
         public event PropertyChangedEventHandler? PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        protected void OnPropertyChanged([CallerMemberName] string? p = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
 
         public void Reset() => Packets.Clear();
 
-        public void AddEntityState(long ts, int site, int app, int entity, 
-                           double x, double y, double z)
+        /// <summary>
+        /// Called for every message, regardless of PDUType.
+        /// </summary>
+        public void AddPacket(int id,
+                              string pduType,
+                              int length,
+                              Dictionary<string, object> recordDetails)
         {
-            var proto = "EntityStatePdu";
-            var src   = $"{site}-{app}-{entity}";
-            var dest  = "NA";
-            var info  = $"X={x:F2}, Y={y:F2}, Z={z:F2}";
-            var details = new Dictionary<string, object>
+            // use the API’s timestampEpoch field for your row time
+            if (!recordDetails.TryGetValue("timestampEpoch", out var rawTs) ||
+                !long.TryParse(rawTs?.ToString(), out var epoch))
             {
-                { "Entity ID", src },
-                { "Location", $"X={x:F2}, Y={y:F2}, Z={z:F2}" }
-            };
-            AddCommon(ts, PacketType.EntityState, src, dest, proto, 0, info, details);
-        }
+                epoch = 0;
+            }
 
-        public void AddFireEvent(long ts, int fSite,int fApp,int fEntity,
-                                        int tSite,int tApp,int tEntity,
-                                        int mSite,int mApp,int mEntity)
-        {
-            var proto = "FireEventPdu";
-            var src   = $"{fSite}-{fApp}-{fEntity}";
-            var dest  = $"{tSite}-{tApp}-{tEntity}";
-            var munition = $"{mSite}-{mApp}-{mEntity}";
-            var info  = $"Munition={munition}";
-            var details = new Dictionary<string, object>
+            var dt = DateTimeOffset
+                     .FromUnixTimeSeconds(epoch)
+                     .LocalDateTime;
+            var details = new Dictionary<string, object>(recordDetails)
             {
-                { "Firing Entity ID", src },
-                { "Target Entity ID", dest },
-                { "Munition", munition }
+                ["Id"]     = id,
+                ["Length"] = length
             };
-            AddCommon(ts, PacketType.FireEvent, src, dest, proto, 0, info, details);
-        }
 
-        private void AddCommon(long ts, PacketType type, string src, string dest, 
-                       string proto, int len, string info, Dictionary<string, object> details)
-        {
-            long epoch = RealTimeMetricsService.FromDisAbsoluteTimestamp(ts);
-            var dt = DateTimeOffset.FromUnixTimeSeconds(epoch).LocalDateTime;
-            Packets.Insert(0, new DisPacket {
+            var packet = new DisPacket
+            {
                 No          = _nextNo++,
                 Time        = dt,
-                Type        = type,
-                Source      = src,
-                Destination = dest,
-                Protocol    = proto,
-                Info        = info,
+                PDUType     = pduType,
+                Source      = "192.168.56.1",
+                Destination = "192.168.56.255",
+                Protocol    = "DIS",
+                Length      = length,
                 Details     = details
-            });
+            };
+
+            Packets.Insert(0, packet);
         }
     }
 }

@@ -10,6 +10,7 @@ namespace DISTestKit.Pages
         public DashboardPage()
         {
             InitializeComponent();
+            DataContext = new ViewModel.MainViewModel();
         }
     }
 }
