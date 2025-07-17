@@ -37,7 +37,7 @@ namespace DISTestKit.Services
             int Id,
             string PDUType,
             int Length,
-            Dictionary<string, object> recordDetails
+            Dictionary<string, object> RecordDetails
         );
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace DISTestKit.Services
                     Id: i + 1,
                     PDUType: (i % 2 == 0) ? "EntityState" : "Designator",
                     Length: 150 + i * 2,
-                    recordDetails: details
+                    RecordDetails: details
                 ));
             }
 

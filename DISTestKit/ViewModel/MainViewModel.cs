@@ -132,7 +132,7 @@ public class MainViewModel : INotifyPropertyChanged
             IsPlaying = true;
         }
 
-        private async Task LoadOnceAsync()
+        public async Task LoadOnceAsync()
         {
             LogsVm.Reset();
             var startDt = StartDateTime;
@@ -152,7 +152,7 @@ public class MainViewModel : INotifyPropertyChanged
                                 m.Id,
                                 m.PDUType,
                                 m.Length,
-                                m.recordDetails);
+                                m.RecordDetails);
                 });
             _lastTimestamp = RealTimeMetricsService.ToDisAbsoluteTimestamp(endUnixTs);
         }
@@ -189,7 +189,7 @@ public class MainViewModel : INotifyPropertyChanged
                     DataVolumeVm.AddDataPoint(nowLocal, (int)(dto.PdusInLastSixtySeconds/60));
 
                     foreach (var m in newLogs)
-                    LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.recordDetails);
+                    LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.RecordDetails);
                 });
 
                 _lastTimestamp = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);

@@ -11,6 +11,7 @@ namespace DISTestKit.Pages
         {
             InitializeComponent();
             DataContext = new ViewModel.MainViewModel();
+            (DataContext as ViewModel.MainViewModel)?.LoadOnceAsync();
         }
     }
 }

@@ -126,12 +126,13 @@
                         </DataGrid.ColumnHeaderStyle>
 
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="No"         Binding="{Binding No}"           Width="50" />
-                            <DataGridTextColumn Header="Time"       Binding="{Binding Time, StringFormat=HH:mm:ss}" Width="100" />
-                            <DataGridTextColumn Header="PDU Type"       Binding="{Binding PDUType}"  Width="100"/>
-                            <DataGridTextColumn Header="Source"     Binding="{Binding Source}"       Width="100" />
-                            <DataGridTextColumn Header="Destination" Binding="{Binding Destination}" Width="100" />
-                            <DataGridTextColumn Header="Protocol"   Binding="{Binding Protocol}"     Width="100" />
+                            <DataGridTextColumn Header="No"          Binding="{Binding No}"           Width="Auto" />
+                            <DataGridTextColumn Header="Time"        Binding="{Binding Time, StringFormat=HH:mm:ss}" Width="Auto" />
+                            <DataGridTextColumn Header="PDU Type"    Binding="{Binding PDUType}"  Width="Auto"/>
+                            <DataGridTextColumn Header="Source"      Binding="{Binding Source}"       Width="Auto" />
+                            <DataGridTextColumn Header="Destination" Binding="{Binding Destination}" Width="Auto" />
+                            <DataGridTextColumn Header="Length"      Binding="{Binding Length}"     Width="Auto" />
+                            <DataGridTextColumn Header="Protocol"    Binding="{Binding Protocol}"     Width="*" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>
@@ -159,14 +160,16 @@
             <ItemsControl ItemsSource="{Binding LogsVm.SelectedPacket.Details}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Grid Margin="2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" Margin="0,0,5,0"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
-                        </Grid>
+                        <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
