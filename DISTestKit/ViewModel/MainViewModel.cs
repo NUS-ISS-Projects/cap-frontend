@@ -1,26 +1,25 @@
-using System;
 using System.ComponentModel;
-using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Timers;
-using LiveChartsCore.Defaults;
 using DISTestKit.Services;
-using DISTestKit.ViewModel;
-using System.Linq;
+using LiveChartsCore.Defaults;
 using Timer = System.Timers.Timer;
 
 namespace DISTestKit.ViewModel
 {
-public class RelayCommand : ICommand
+    public class RelayCommand : ICommand
     {
         private readonly Action _execute;
+
         public RelayCommand(Action execute) => _execute = execute;
+
         public bool CanExecute(object? _) => true;
+
         public void Execute(object? _) => _execute();
+
         public event EventHandler? CanExecuteChanged;
     }
 
-public class MainViewModel : INotifyPropertyChanged
+    public class MainViewModel : INotifyPropertyChanged
     {
         // ––– Sub-ViewModels ––––––––––––––––––––––––––––––––––––––––––––––
         public VolumeChartViewModel VolumeVm { get; }
@@ -40,7 +39,8 @@ public class MainViewModel : INotifyPropertyChanged
             get => _isPlaying;
             set
             {
-                if (_isPlaying == value) return;
+                if (_isPlaying == value)
+                    return;
                 _isPlaying = value;
                 OnPropertyChanged(nameof(IsPlaying));
                 OnPropertyChanged(nameof(IsPaused));
@@ -68,10 +68,12 @@ public class MainViewModel : INotifyPropertyChanged
             get => _selectedDate;
             set
             {
-                if (_selectedDate == value) return;
+                if (_selectedDate == value)
+                    return;
                 _selectedDate = value;
                 OnPropertyChanged(nameof(SelectedDate));
-                if (IsPaused) _ = LoadOnceAsync();
+                if (IsPaused)
+                    _ = LoadOnceAsync();
             }
         }
 
@@ -81,44 +83,47 @@ public class MainViewModel : INotifyPropertyChanged
             get => _selectedTime;
             set
             {
-                if (_selectedTime == value) return;
+                if (_selectedTime == value)
+                    return;
                 _selectedTime = value;
                 OnPropertyChanged(nameof(SelectedTime));
-                if (IsPaused) _ = LoadOnceAsync();
+                if (IsPaused)
+                    _ = LoadOnceAsync();
             }
         }
 
         // For a selected time, define a 1-hour window
         private DateTime StartDateTime => SelectedDate.Date;
-        private DateTime EndDateTime => SelectedTime.HasValue
-            ? SelectedDate.Date + SelectedTime.Value.TimeOfDay + TimeSpan.FromHours(1)
-            : SelectedDate.Date.AddDays(1).AddTicks(-1);
+        private DateTime EndDateTime =>
+            SelectedTime.HasValue
+                ? SelectedDate.Date + SelectedTime.Value.TimeOfDay + TimeSpan.FromHours(1)
+                : SelectedDate.Date.AddDays(1).AddTicks(-1);
 
         // ––– Dashboard Metrics ––––––––––––––––––––––––––––––––––––––––––
-        public int    TotalPdusLastMinute   { get; private set; }
-        public double AveragePdusPerSecond  { get; private set; }
-        public double PeakPdusPerSecond     { get; private set; }
-        public string EntityVsFireSummary   { get; private set; }
+        public int TotalPacketsLastHour { get; private set; }
+        public double AveragePacketsPerSecondLastHour { get; private set; }
+        public double PeakPacketsPerSecondLastHour { get; private set; }
         private readonly Queue<int> _window = new();
 
         // ––– Infrastructure –––––––––––––––––––––––––––––––––––––––––––––
-        private readonly RealTimeMetricsService _metricsSvc;
+        private readonly string baseURL;
+        private readonly RealTimeLogsService _realTimeLogsSvc;
+        private readonly RealTimeMetricsService _realTimeMetricsSvc;
         private readonly Timer _timer;
         private long _lastTimestamp;
 
-
         public MainViewModel()
         {
-            _metricsSvc = new RealTimeMetricsService("http://34.102.132.29/api/acquisition/");
+            baseURL = "http://localhost:32080/api/";
+            _realTimeMetricsSvc = new RealTimeMetricsService(baseURL);
+            _realTimeLogsSvc = new RealTimeLogsService(baseURL);
             VolumeVm = new VolumeChartViewModel();
             ThroughputVm = new ThroughputChartViewModel();
             ComparisonVm = new PduTypeComparisonViewModel();
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
 
-            EntityVsFireSummary = string.Empty;
-
-            PlayCommand    = new RelayCommand(() => IsPlaying = !IsPlaying);
+            PlayCommand = new RelayCommand(() => IsPlaying = !IsPlaying);
             RefreshCommand = new RelayCommand(() =>
             {
                 SelectedDate = DateTime.Now.Date;
@@ -139,70 +144,61 @@ public class MainViewModel : INotifyPropertyChanged
             var endDt = EndDateTime;
 
             // Convert to DIS timestamps
-             var startUnixTs = new DateTimeOffset(startDt).ToUnixTimeSeconds();
-             var endUnixTs = new DateTimeOffset(endDt).ToUnixTimeSeconds();
+            var startUnixTs = new DateTimeOffset(startDt).ToUnixTimeSeconds();
+            var endUnixTs = new DateTimeOffset(endDt).ToUnixTimeSeconds();
 
             // Fetch and push historical rows
-            var raw = await RealTimeMetricsService.GetHistoricalLogsAsync(startUnixTs, endUnixTs);
+            var raw = await _realTimeLogsSvc.GetRealTimeLogsAsync(startUnixTs, endUnixTs);
 
             App.Current.Dispatcher.Invoke(() =>
-                {
-                    foreach (var m in raw)
-                        LogsVm.AddPacket(
-                                m.Id,
-                                m.PDUType,
-                                m.Length,
-                                m.RecordDetails);
-                });
-            _lastTimestamp = RealTimeMetricsService.ToDisAbsoluteTimestamp(endUnixTs);
+            {
+                foreach (var m in raw)
+                    LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.RecordDetails);
+            });
+            _lastTimestamp = RealTimeLogsService.ToDisAbsoluteTimestamp(endUnixTs);
         }
 
         private async Task OnTickAsync()
         {
             try
             {
-                // First update charts from /realtime
-                var dto = await _metricsSvc.GetAsync();
-                var nowLocal = DateTimeOffset
-                        .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
-                        .LocalDateTime;
-                _window.Enqueue((int)dto.PdusInLastSixtySeconds);
-                if (_window.Count > 60) _window.Dequeue();
-
-                TotalPdusLastMinute    = _window.Sum();
-                AveragePdusPerSecond   = _window.Average();
-                PeakPdusPerSecond      = _window.Max();
-                OnPropertyChanged(nameof(TotalPdusLastMinute));
-                OnPropertyChanged(nameof(AveragePdusPerSecond));
-                OnPropertyChanged(nameof(PeakPdusPerSecond));
-
-                var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var lastUnixTimestamp = RealTimeMetricsService.FromDisAbsoluteTimestamp(_lastTimestamp);
-                var newLogs = await RealTimeMetricsService.GetHistoricalLogsAsync(lastUnixTimestamp, nowSecs);
-
-                OnPropertyChanged(nameof(EntityVsFireSummary));
+                // Update chart from  metrics endpoint  ──────────────────────────────
+                var metrics = await _realTimeMetricsSvc.GetMetricsAsync();
+                var time = metrics.DataUntilUtc.ToLocalTime();
 
                 App.Current.Dispatcher.Invoke(() =>
                 {
-                    VolumeVm.Update(new DateTimePoint(nowLocal, dto.PdusInLastSixtySeconds));
-                    ThroughputVm.Update(new DateTimePoint(nowLocal, dto.AveragePduRatePerSecondLastSixtySeconds));
-                    DataVolumeVm.AddDataPoint(nowLocal, (int)(dto.PdusInLastSixtySeconds/60));
-
-                    foreach (var m in newLogs)
-                    LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.RecordDetails);
+                    VolumeVm.Update(new DateTimePoint(time, metrics.TotalPackets));
                 });
 
-                _lastTimestamp = RealTimeMetricsService.ToDisAbsoluteTimestamp(nowSecs);
+                // update logs from  logs endpoint ─────────────────────────────────
+
+                var nowSecs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var lastUnixTimestamp = RealTimeLogsService.FromDisAbsoluteTimestamp(
+                    _lastTimestamp
+                );
+                var newLogs = await _realTimeLogsSvc.GetRealTimeLogsAsync(
+                    lastUnixTimestamp,
+                    nowSecs
+                );
+
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    foreach (var m in newLogs)
+                        LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.RecordDetails);
+                });
+
+                _lastTimestamp = RealTimeLogsService.ToDisAbsoluteTimestamp(nowSecs);
             }
             catch
-                {
-                    // ignore
-                }
+            {
+                // ignore
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
         protected void OnPropertyChanged(string n) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
     }
-
 }
