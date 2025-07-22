@@ -12,7 +12,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <!-- Top toolbar -->
-            <RowDefinition Height="235"/>
+            <RowDefinition Height="350"/>
             <!-- Traffic Volume chart -->
             <RowDefinition Height="*"/>
             <!-- Logs + Detail pane -->
@@ -30,49 +30,61 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <StackPanel 
-          Orientation="Horizontal" 
-          Grid.Row="0"
-          Grid.ColumnSpan="3"
-          HorizontalAlignment="Right"
-          VerticalAlignment="Center"
-          Margin="0,10,0,0">
+                Orientation="Horizontal" 
+                Grid.Row="0"
+                Grid.ColumnSpan="3"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Margin="0,10,0,0">
+
+                <DatePicker x:Name="DatePicker"
+                    SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                    Margin="0,0,10,0"
+                    Height="60"
+                    Width="250"
+                    VerticalAlignment="Center"/>
 
                 <Button x:Name="TodayButton"
-            Content="Today"
-            MinWidth="50"
-            FontWeight="Bold"
-            Style="{StaticResource RoundedButtonStyle}"
-            Background="white" Height="30"/>
+                    Content="Today"
+                    MinWidth="50"
+                    FontWeight="Bold"
+                    Style="{StaticResource RoundedButtonStyle}"
+                    Background="white" Height="30"/>
+
                 <Button x:Name="WeekButton"
-            Content="Week"
-            MinWidth="50"
-            FontWeight="Bold"
-            Margin="10,0,0,0"
-            Style="{StaticResource RoundedButtonStyle}"
-            Background="white" Height="30"/>
+                    Content="Week"
+                    MinWidth="50"
+                    FontWeight="Bold"
+                    Margin="10,0,0,0"
+                    Style="{StaticResource RoundedButtonStyle}"
+                    Background="white" Height="30"/>
+
                 <Button x:Name="MonthButton"
-            Content="Month"
-            MinWidth="50"
-            FontWeight="Bold"
-            Margin="10,0,0,0"
-            Style="{StaticResource RoundedButtonStyle}"
-            Background="white" Height="30"/>
+                    Content="Month"
+                    MinWidth="50"
+                    FontWeight="Bold"
+                    Margin="10,0,0,0"
+                    Style="{StaticResource RoundedButtonStyle}"
+                    Background="white" Height="30"/>
 
                 <Button x:Name="PlayButton"
-            Command="{Binding PlayCommand}"
-            MinWidth="50"
-            Margin="10,0,10,0"
-            Style="{StaticResource RoundedButtonStyle}"
-            Background="white" Height="30">
+                    Command="{Binding PlayCommand}"
+                    MinWidth="50"
+                    Margin="10,0,10,0"
+                    Style="{StaticResource RoundedButtonStyle}"
+                    Background="white" Height="30">
                     <ui:SymbolIcon Symbol="Play32" Width="25" Height="25"/>
                 </Button>
+
                 <Button x:Name="PlayButton1"
-            Command="{Binding RefreshCommand}"
-            MinWidth="50"
-            Style="{StaticResource RoundedButtonStyle}"
-            Background="white" Height="30">
+                    Command="{Binding RefreshCommand}"
+                    MinWidth="50"
+                    Margin="0,0,10,0"
+                    Style="{StaticResource RoundedButtonStyle}"
+                    Background="white" Height="30">
                     <ui:SymbolIcon Symbol="ArrowCounterclockwise48" Width="25" Height="25"/>
                 </Button>
+
             </StackPanel>
         </Grid>
 
@@ -80,41 +92,44 @@
         <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3">
             <StackPanel>
                 <TextBlock
-             Text="Traffic Volume"
-             FontSize="16"
-             FontWeight="Bold"
-             FontFamily="Arial"
-             Margin="0,0,0,4"
-             HorizontalAlignment="Left" />
+                    Text="Traffic Volume"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    FontFamily="Arial"
+                    Margin="0,0,0,4"
+                    HorizontalAlignment="Left" />
                 <lvc:CartesianChart
-             Series="{Binding VolumeVm.Series}"
-             XAxes="{Binding VolumeVm.XAxes}"
-             YAxes="{Binding VolumeVm.YAxes}"
-             AnimationsSpeed="00:00:00"
-             EasingFunction="{x:Null}"
-             Height="200"
-             Background="White" />
+                    Series="{Binding VolumeVm.Series}"
+                    XAxes="{Binding VolumeVm.XAxes}"
+                    YAxes="{Binding VolumeVm.YAxes}"
+                    AnimationsSpeed="00:00:00"
+                    EasingFunction="{x:Null}"
+                    Height="320"
+                    Background="White" />
             </StackPanel>
         </Grid>
 
         <!-- ─────── Logs ─────── -->
         <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,10">
             <Border CornerRadius="8" Background="White" Effect="{StaticResource Shadow}">
-                <StackPanel>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>     
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <DataGrid
-            ItemsSource="{Binding LogsVm.Packets}"
-            SelectedItem="{Binding LogsVm.SelectedPacket, Mode=TwoWay}"
-            AutoGenerateColumns="False"
-            CanUserAddRows="False"
-            IsReadOnly="True"
-            GridLinesVisibility="Horizontal"
-            HeadersVisibility="Column"
-            RowHeight="30"
-            ColumnHeaderHeight="30"
-            FontSize="12"
-            Background="White"
-            MinHeight="240">
-
+                        ItemsSource="{Binding LogsVm.Packets}"
+                        SelectedItem="{Binding LogsVm.SelectedPacket, Mode=TwoWay}"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        IsReadOnly="True"
+                        GridLinesVisibility="Horizontal"
+                        HeadersVisibility="Column"
+                        RowHeight="30"
+                        ColumnHeaderHeight="30"
+                        FontSize="12"
+                        Background="White"
+                        MinHeight="240">
                         <DataGrid.ColumnHeaderStyle>
                             <Style TargetType="{x:Type DataGridColumnHeader}">
                                 <Setter Property="BorderBrush" Value="LightGray"/>
@@ -126,7 +141,7 @@
                         </DataGrid.ColumnHeaderStyle>
 
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="No"          Binding="{Binding No}"           Width="Auto" />
+                            <DataGridTextColumn Header="Id"          Binding="{Binding No}"           Width="Auto" />
                             <DataGridTextColumn Header="Time"        Binding="{Binding Time, StringFormat=HH:mm:ss}" Width="Auto" />
                             <DataGridTextColumn Header="PDU Type"    Binding="{Binding PDUType}"  Width="Auto"/>
                             <DataGridTextColumn Header="Source"      Binding="{Binding Source}"       Width="Auto" />
@@ -135,7 +150,7 @@
                             <DataGridTextColumn Header="Protocol"    Binding="{Binding Protocol}"     Width="*" />
                         </DataGrid.Columns>
                     </DataGrid>
-                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
 
@@ -157,7 +172,7 @@
                 </Style>
             </StackPanel.Style>
             <TextBlock Text="Log Session Details" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-            <ItemsControl ItemsSource="{Binding LogsVm.SelectedPacket.Details}">
+            <ItemsControl ItemsSource="{Binding LogsVm.SelectedPacket.DisplayDetails}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="5">

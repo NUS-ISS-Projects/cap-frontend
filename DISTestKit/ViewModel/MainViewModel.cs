@@ -131,7 +131,7 @@ namespace DISTestKit.ViewModel
                 _ = LoadOnceAsync();
             });
 
-            _timer = new Timer(1000) { AutoReset = true };
+            _timer = new Timer(2000) { AutoReset = true };
             _timer.Elapsed += async (_, __) => await OnTickAsync();
             _lastTimestamp = 0;
             IsPlaying = true;
