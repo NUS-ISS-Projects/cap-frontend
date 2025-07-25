@@ -14,16 +14,6 @@
     Width="1000"
     Background="#e8eaf0">
 
-    <Window.Resources>
-        <CollectionViewSource x:Key="LogsCollection"
-                            Source="{Binding LogsVm.Packets}">
-            <CollectionViewSource.SortDescriptions>
-                <scm:SortDescription PropertyName="No"
-                                Direction="Descending"/>
-            </CollectionViewSource.SortDescriptions>
-        </CollectionViewSource>
-    </Window.Resources>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>

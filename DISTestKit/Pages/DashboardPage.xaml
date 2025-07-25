@@ -8,6 +8,16 @@
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     Background="Transparent">
 
+    <UserControl.Resources>
+        <CollectionViewSource x:Key="SortedLogs"
+                                Source="{Binding LogsVm.Packets}">
+            <CollectionViewSource.SortDescriptions>
+            <scm:SortDescription PropertyName="Time"
+                                Direction="Descending"/>
+            </CollectionViewSource.SortDescriptions>
+        </CollectionViewSource>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -72,8 +82,20 @@
                     MinWidth="50"
                     Margin="10,0,10,0"
                     Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30">
-                    <ui:SymbolIcon Symbol="Play32" Width="25" Height="25"/>
+                    Height="30"
+                    Background="White">
+                    <ui:SymbolIcon x:Name="PlayIcon" Symbol="Play32" Width="25" Height="25">
+                        <ui:SymbolIcon.Style>
+                            <Style TargetType="ui:SymbolIcon">
+                                <Setter Property="Foreground" Value="Green"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPlaying}" Value="False">
+                                        <Setter Property="Foreground" Value="Red"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:SymbolIcon.Style>
+                    </ui:SymbolIcon>
                 </Button>
 
                 <Button x:Name="PlayButton1"
@@ -118,7 +140,7 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <DataGrid
-                        ItemsSource="{Binding LogsVm.Packets}"
+                        ItemsSource="{Binding Source={StaticResource SortedLogs}}"
                         SelectedItem="{Binding LogsVm.SelectedPacket, Mode=TwoWay}"
                         AutoGenerateColumns="False"
                         CanUserAddRows="False"

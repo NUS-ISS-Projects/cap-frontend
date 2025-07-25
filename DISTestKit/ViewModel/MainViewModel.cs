@@ -91,19 +91,11 @@ namespace DISTestKit.ViewModel
                     _ = LoadOnceAsync();
             }
         }
-
-        // For a selected time, define a 1-hour window
         private DateTime StartDateTime => SelectedDate.Date;
         private DateTime EndDateTime =>
             SelectedTime.HasValue
                 ? SelectedDate.Date + SelectedTime.Value.TimeOfDay + TimeSpan.FromHours(1)
                 : SelectedDate.Date.AddDays(1).AddTicks(-1);
-
-        // ––– Dashboard Metrics ––––––––––––––––––––––––––––––––––––––––––
-        public int TotalPacketsLastHour { get; private set; }
-        public double AveragePacketsPerSecondLastHour { get; private set; }
-        public double PeakPacketsPerSecondLastHour { get; private set; }
-        private readonly Queue<int> _window = new();
 
         // ––– Infrastructure –––––––––––––––––––––––––––––––––––––––––––––
         private readonly string baseURL;
@@ -111,6 +103,7 @@ namespace DISTestKit.ViewModel
         private readonly RealTimeMetricsService _realTimeMetricsSvc;
         private readonly Timer _timer;
         private long _lastTimestamp;
+        private int? _previousTotalPackets;
 
         public MainViewModel()
         {
@@ -166,10 +159,20 @@ namespace DISTestKit.ViewModel
                 var metrics = await _realTimeMetricsSvc.GetMetricsAsync();
                 var time = metrics.DataUntilUtc.ToLocalTime();
 
-                App.Current.Dispatcher.Invoke(() =>
+                int delta;
+                if (_previousTotalPackets.HasValue)
                 {
-                    VolumeVm.Update(new DateTimePoint(time, metrics.TotalPackets));
-                });
+                    delta = metrics.TotalPackets - _previousTotalPackets.Value;
+                    if (delta < 0)
+                        delta = 0;
+                }
+                else
+                    delta = 0;
+                _previousTotalPackets = metrics.TotalPackets;
+
+                App.Current.Dispatcher.Invoke(() =>
+                    VolumeVm.Update(new DateTimePoint(time, delta))
+                );
 
                 // update logs from  logs endpoint ─────────────────────────────────
 

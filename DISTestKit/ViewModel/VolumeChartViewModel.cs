@@ -23,8 +23,8 @@ namespace DISTestKit.ViewModel
                 {
                     Name = "Volume",
                     Values = _values,
-                    Stroke = new SolidColorPaint(SKColors.MediumPurple, 2),
-                    Fill = new SolidColorPaint(new SKColor(128, 0, 128, 80)),
+                    Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
+                    Fill = new SolidColorPaint(new SKColor(80, 132, 221, 80)),
                 },
             };
 
@@ -36,6 +36,7 @@ namespace DISTestKit.ViewModel
                     Labeler = value => new DateTime((long)value).ToString("HH:mm:ss"),
                     MinLimit = now.AddMinutes(-1).Ticks,
                     MaxLimit = now.Ticks,
+                    TicksPaint = new SolidColorPaint(new SKColor(80, 132, 221)),
                 },
             ];
             YAxes = [new Axis { MinLimit = 0, MaxLimit = 3000 }];
