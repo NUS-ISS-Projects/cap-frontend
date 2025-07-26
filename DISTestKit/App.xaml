@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml" 
              xmlns:local="clr-namespace:DISTestKit"
-             StartupUri="MainWindow.xaml">
+             StartupUri="MainWindow.xaml"
+             xmlns:vm="clr-namespace:DISTestKit.ViewModel">
     <Application.Resources>
         <ResourceDictionary>
 
@@ -22,21 +23,72 @@
                 <Setter Property="BorderBrush" Value="#EEF1FB" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="8,4" />
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
                             <Border 
-                Background="{TemplateBinding Background}" 
-                BorderBrush="{TemplateBinding BorderBrush}" 
-                BorderThickness="{TemplateBinding BorderThickness}" 
-                CornerRadius="5">
+                                    Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}" 
+                                    CornerRadius="5">
                                 <ContentPresenter 
-                  HorizontalAlignment="Center" 
-                  VerticalAlignment="Center"/>
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    TextElement.Foreground="{TemplateBinding Foreground}"/>
                             </Border>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
+            </Style>
+            <Style x:Key="PeriodButtonStyle"
+                    TargetType="Button"
+                    BasedOn="{StaticResource RoundedButtonStyle}">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="Foreground" Value="Black"/>
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition
+                            Binding="{Binding SelectedPeriod}"
+                            Value="{x:Static vm:Period.Today}" />
+                            <Condition
+                            Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                            Value="{x:Static vm:Period.Today}" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Background" Value="Blue"/>
+                        <Setter Property="Foreground" Value="White"/>
+                    </MultiDataTrigger>
+                    <!-- Week -->
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition
+                            Binding="{Binding SelectedPeriod}"
+                            Value="{x:Static vm:Period.Week}" />
+                            <Condition
+                            Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                            Value="{x:Static vm:Period.Week}" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Background" Value="Blue"/>
+                        <Setter Property="Foreground" Value="White"/>
+                    </MultiDataTrigger>
+                    <!-- Month -->
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition
+                            Binding="{Binding SelectedPeriod}"
+                            Value="{x:Static vm:Period.Month}" />
+                            <Condition
+                            Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                            Value="{x:Static vm:Period.Month}" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Background" Value="Blue"/>
+                        <Setter Property="Foreground" Value="White"/>
+                    </MultiDataTrigger>
+                </Style.Triggers>
             </Style>
             <Style x:Key="NavigationButton" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>

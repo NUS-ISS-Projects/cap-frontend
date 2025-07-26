@@ -6,6 +6,7 @@
     xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
     xmlns:xtk="http://schemas.xceed.com/wpf/xaml/toolkit"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+    xmlns:vm="clr-namespace:DISTestKit.ViewModel"
     Background="Transparent">
 
     <UserControl.Resources>
@@ -55,27 +56,33 @@
                     VerticalAlignment="Center"/>
 
                 <Button x:Name="TodayButton"
+                    Tag="{x:Static vm:Period.Today}"
                     Content="Today"
+                    Command="{Binding TodayCommand}"
                     MinWidth="50"
+                    Height="30"
                     FontWeight="Bold"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30"/>
+                    Style="{StaticResource PeriodButtonStyle}"/>
 
                 <Button x:Name="WeekButton"
+                    Tag="{x:Static vm:Period.Week}"
                     Content="Week"
+                    Command="{Binding WeekCommand}"
                     MinWidth="50"
+                    Height="30"
                     FontWeight="Bold"
                     Margin="10,0,0,0"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30"/>
+                    Style="{StaticResource PeriodButtonStyle}"/>
 
                 <Button x:Name="MonthButton"
+                    Tag="{x:Static vm:Period.Month}"
                     Content="Month"
+                    Command="{Binding MonthCommand}"
                     MinWidth="50"
+                    Height="30"
                     FontWeight="Bold"
                     Margin="10,0,0,0"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Background="white" Height="30"/>
+                    Style="{StaticResource PeriodButtonStyle}"/>
 
                 <Button x:Name="PlayButton"
                     Command="{Binding PlayCommand}"

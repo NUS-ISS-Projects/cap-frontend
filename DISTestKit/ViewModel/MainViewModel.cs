@@ -19,6 +19,14 @@ namespace DISTestKit.ViewModel
         public event EventHandler? CanExecuteChanged;
     }
 
+    public enum Period
+    {
+        None,
+        Today,
+        Week,
+        Month,
+    }
+
     public class MainViewModel : INotifyPropertyChanged
     {
         // ––– Sub-ViewModels ––––––––––––––––––––––––––––––––––––––––––––––
@@ -55,6 +63,7 @@ namespace DISTestKit.ViewModel
                     SelectedTime = null;
                     SelectedDate = DateTime.Now.Date;
                     _lastTimestamp = 0;
+                    SelectedPeriod = Period.None;
                 }
             }
         }
@@ -97,6 +106,24 @@ namespace DISTestKit.ViewModel
                 ? SelectedDate.Date + SelectedTime.Value.TimeOfDay + TimeSpan.FromHours(1)
                 : SelectedDate.Date.AddDays(1).AddTicks(-1);
 
+        private Period _selectedPeriod = Period.None;
+        public Period SelectedPeriod
+        {
+            get => _selectedPeriod;
+            set
+            {
+                if (_selectedPeriod == value)
+                    return;
+                _selectedPeriod = value;
+                OnPropertyChanged(nameof(SelectedPeriod));
+                if (value != Period.None)
+                    IsPlaying = false;
+            }
+        }
+        public ICommand TodayCommand { get; }
+        public ICommand WeekCommand { get; }
+        public ICommand MonthCommand { get; }
+
         // ––– Infrastructure –––––––––––––––––––––––––––––––––––––––––––––
         private readonly string baseURL;
         private readonly RealTimeLogsService _realTimeLogsSvc;
@@ -115,6 +142,9 @@ namespace DISTestKit.ViewModel
             ComparisonVm = new PduTypeComparisonViewModel();
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
+            TodayCommand = new RelayCommand(() => SelectedPeriod = Period.Today);
+            WeekCommand = new RelayCommand(() => SelectedPeriod = Period.Week);
+            MonthCommand = new RelayCommand(() => SelectedPeriod = Period.Month);
 
             PlayCommand = new RelayCommand(() => IsPlaying = !IsPlaying);
             RefreshCommand = new RelayCommand(() =>
