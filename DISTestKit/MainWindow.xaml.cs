@@ -1,23 +1,42 @@
 ﻿using System.Windows;
-using DISTestKit.ViewModel;
+using DISTestKit.Pages;
 
 namespace DISTestKit
 {
-public partial class MainWindow : Window
+    public partial class MainWindow : Window
     {
         public MainWindow()
         {
             InitializeComponent();
+            ShowLogin();
         }
-        private void DashboardButton_Click(object sender, RoutedEventArgs e)
+
+        public void ShowLogin()
         {
-            DashboardView.Visibility = Visibility.Visible;
-            ForecastView.Visibility = Visibility.Collapsed;
+            SideNavPanel.Visibility = Visibility.Collapsed;
+            MainContent.Content = new LoginPage();
         }
-        private void ForecastButton_Click(object sender, RoutedEventArgs e)
+
+        public void ShowRegister()
         {
-            DashboardView.Visibility = Visibility.Collapsed;
-            ForecastView.Visibility = Visibility.Visible;
+            SideNavPanel.Visibility = Visibility.Collapsed;
+            MainContent.Content = new RegisterPage();
         }
+
+        public void ShowDashboard()
+        {
+            SideNavPanel.Visibility = Visibility.Visible;
+            MainContent.Content = new DashboardPage();
+        }
+
+        public void ShowForecast()
+        {
+            SideNavPanel.Visibility = Visibility.Visible;
+            MainContent.Content = new ForecastPage();
+        }
+
+        private void DashboardButton_Click(object sender, RoutedEventArgs e) => ShowDashboard();
+
+        private void ForecastButton_Click(object sender, RoutedEventArgs e) => ShowForecast();
     }
 }

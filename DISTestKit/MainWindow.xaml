@@ -14,29 +14,25 @@
     Width="1000"
     Background="#e8eaf0">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="50"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="235"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="200"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" Background="#FFFFFF" CornerRadius="8" Effect="{StaticResource Shadow}">
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+            Height="50" 
+            Background="#FFFFFF" 
+            CornerRadius="8" 
+            Effect="{StaticResource Shadow}">
             <StackPanel>
                 <TextBlock Text="ST Engineering DIS System" FontFamily="Arial" FontSize="25" FontWeight="Bold" Margin="10,10,0,10" HorizontalAlignment="Left"/>
             </StackPanel>
         </Border>
 
         <!-- Side Navigation -->
-        <Border Grid.Row="1" Grid.Column="0" Grid.RowSpan="4" Background="#FFFFFF" CornerRadius="8" Margin="10,20,10,10" Effect="{StaticResource Shadow}">
+        <Border x:Name="SideNavPanel"
+                DockPanel.Dock="Left"
+                Width="150"
+                Background="#FFFFFF" 
+                CornerRadius="8"
+                Margin="10,20,10,10"
+                Effect="{StaticResource Shadow}">
             <StackPanel>
                 <TextBlock Text="Hello, Cindy!" FontFamily="Arial" FontSize="15" FontWeight="Bold" Margin="0,20,0,20" HorizontalAlignment="Center"/>
                 <Button x:Name="DashboardButton" Click="DashboardButton_Click" Style="{StaticResource NavigationButton}">
@@ -82,18 +78,8 @@
             </StackPanel>
         </Border>
 
-        <pages:DashboardPage
-            x:Name="DashboardView"
-            Grid.Row="2" Grid.Column="1"
-            Grid.RowSpan="2"
-            Grid.ColumnSpan="4"
-            Background="Transparent"/>
-        <pages:ForecastPage
-            x:Name="ForecastView"
-            Grid.Row="2" Grid.Column="1"
-            Grid.RowSpan="2"
-            Grid.ColumnSpan="4"
-            Visibility="Collapsed"
-            Background="Transparent"/>
-    </Grid>
+        <ContentControl
+            x:Name="MainContent"
+            Margin="10"/>
+    </DockPanel>
 </Window>
