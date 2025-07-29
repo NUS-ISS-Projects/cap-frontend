@@ -65,7 +65,7 @@
                         <TextBlock Grid.Column="1" Text="Notifcations" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     </Grid>
                 </Button>
-                <Button x:Name="SettingButton" Style="{StaticResource NavigationButton}">
+                <Button x:Name="SettingButton" Click="SettingsButton_Click" Style="{StaticResource NavigationButton}">
                     <Grid Width="120" Margin="0,0,0,5">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

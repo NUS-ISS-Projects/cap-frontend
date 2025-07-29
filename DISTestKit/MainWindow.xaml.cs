@@ -35,8 +35,16 @@ namespace DISTestKit
             MainContent.Content = new ForecastPage();
         }
 
+        public void ShowSettings()
+        {
+            SideNavPanel.Visibility = Visibility.Visible;
+            MainContent.Content = new SettingsPage();
+        }
+
         private void DashboardButton_Click(object sender, RoutedEventArgs e) => ShowDashboard();
 
         private void ForecastButton_Click(object sender, RoutedEventArgs e) => ShowForecast();
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
     }
 }
