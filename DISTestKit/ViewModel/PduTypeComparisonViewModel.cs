@@ -19,40 +19,32 @@ namespace DISTestKit.ViewModel
         public PduTypeComparisonViewModel()
         {
             var entityCount = 0;
-            var fireCount   = 0;
+            var fireCount = 0;
 
             Series = new ObservableCollection<ISeries>
             {
                 new ColumnSeries<long>
                 {
-                    Name   = "EntityStatePdu",
+                    Name = "EntityStatePdu",
                     Values = new ObservableCollection<long> { entityCount },
-                    Fill   = new SolidColorPaint(SKColors.CornflowerBlue)
+                    Fill = new SolidColorPaint(SKColors.CornflowerBlue),
                 },
                 new ColumnSeries<long>
                 {
-                    Name   = "FireEventPdu",
+                    Name = "FireEventPdu",
                     Values = new ObservableCollection<long> { fireCount },
-                    Fill   = new SolidColorPaint(SKColors.OrangeRed)
-                }
+                    Fill = new SolidColorPaint(SKColors.OrangeRed),
+                },
             };
 
             XAxes = new[]
             {
-                new Axis
-                {
-                    Labels = new[] { "Counts" },
-                    Name   = ""    
-                }
+                new Axis { Labels = new[] { "Counts" }, Name = "" },
             };
 
             YAxes = new[]
             {
-                new Axis
-                {
-                    Name     = "",
-                    MinLimit = 0
-                }
+                new Axis { Name = "", MinLimit = 0 },
             };
         }
 
@@ -62,7 +54,10 @@ namespace DISTestKit.ViewModel
             var entitySeries = (ColumnSeries<long>)Series[0];
             var fireSeries = (ColumnSeries<long>)Series[1];
 
-            if (entitySeries.Values is ObservableCollection<long> entityValues && entityValues.Count > 0)
+            if (
+                entitySeries.Values is ObservableCollection<long> entityValues
+                && entityValues.Count > 0
+            )
                 entityValues[0] = entityStateCount;
 
             if (fireSeries.Values is ObservableCollection<long> fireValues && fireValues.Count > 0)
@@ -72,7 +67,8 @@ namespace DISTestKit.ViewModel
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
-        protected void OnPropertyChanged(string n)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+
+        protected void OnPropertyChanged(string n) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
     }
 }

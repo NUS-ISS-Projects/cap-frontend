@@ -11,6 +11,9 @@ namespace DISTestKit.ViewModel
     public class VolumeChartViewModel
     {
         private readonly ObservableCollection<DateTimePoint> _values = new();
+
+        public void Clear() => _values.Clear();
+
         public ObservableCollection<ISeries> Series { get; }
         public Axis[] XAxes { get; }
         public Axis[] YAxes { get; }

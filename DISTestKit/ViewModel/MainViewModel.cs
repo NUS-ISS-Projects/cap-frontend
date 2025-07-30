@@ -128,6 +128,7 @@ namespace DISTestKit.ViewModel
         private readonly string baseURL;
         private readonly RealTimeLogsService _realTimeLogsSvc;
         private readonly RealTimeMetricsService _realTimeMetricsSvc;
+        private readonly AggregationService _aggregationSvc;
         private readonly Timer _timer;
         private long _lastTimestamp;
         private int? _previousTotalPackets;
@@ -137,6 +138,7 @@ namespace DISTestKit.ViewModel
             baseURL = "http://localhost:32080/api/";
             _realTimeMetricsSvc = new RealTimeMetricsService(baseURL);
             _realTimeLogsSvc = new RealTimeLogsService(baseURL);
+            _aggregationSvc = new AggregationService(baseURL);
             VolumeVm = new VolumeChartViewModel();
             ThroughputVm = new ThroughputChartViewModel();
             ComparisonVm = new PduTypeComparisonViewModel();
@@ -162,23 +164,54 @@ namespace DISTestKit.ViewModel
 
         public async Task LoadOnceAsync()
         {
+            VolumeVm.Clear();
             LogsVm.Reset();
-            var startDt = StartDateTime;
-            var endDt = EndDateTime;
 
-            // Convert to DIS timestamps
-            var startUnixTs = new DateTimeOffset(startDt).ToUnixTimeSeconds();
-            var endUnixTs = new DateTimeOffset(endDt).ToUnixTimeSeconds();
-
-            // Fetch and push historical rows
-            var raw = await _realTimeLogsSvc.GetRealTimeLogsAsync(startUnixTs, endUnixTs);
-
-            App.Current.Dispatcher.Invoke(() =>
+            if (IsPaused)
             {
-                foreach (var m in raw)
-                    LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.RecordDetails);
-            });
-            _lastTimestamp = RealTimeLogsService.ToDisAbsoluteTimestamp(endUnixTs);
+                var agg = await _aggregationSvc.GetAggregateAsync(
+                    today: SelectedPeriod == Period.Today,
+                    week: SelectedPeriod == Period.Week,
+                    month: SelectedPeriod == Period.Month,
+                    date: SelectedPeriod == Period.None && !SelectedTime.HasValue
+                        ? SelectedDate
+                        : (DateTime?)null,
+                    startDate: SelectedTime.HasValue ? SelectedDate : null,
+                    endDate: SelectedTime.HasValue ? SelectedDate : null
+                );
+
+                foreach (var b in agg.Buckets)
+                {
+                    DateTime when = agg.TimeUnit switch
+                    {
+                        "hour" => SelectedDate.AddHours(b.Hour ?? 0),
+                        "day" => DateTime.Parse(b.Date!),
+                        "week" => SelectedDate,
+                        _ => SelectedDate,
+                    };
+
+                    VolumeVm.Update(new DateTimePoint(when, b.TotalPackets));
+                }
+            }
+            else
+            {
+                var startDt = StartDateTime;
+                var endDt = EndDateTime;
+
+                // Convert to DIS timestamps
+                var startUnixTs = new DateTimeOffset(startDt).ToUnixTimeSeconds();
+                var endUnixTs = new DateTimeOffset(endDt).ToUnixTimeSeconds();
+
+                // Fetch and push historical rows
+                var raw = await _realTimeLogsSvc.GetRealTimeLogsAsync(startUnixTs, endUnixTs);
+
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    foreach (var m in raw)
+                        LogsVm.AddPacket(m.Id, m.PDUType, m.Length, m.RecordDetails);
+                });
+                _lastTimestamp = RealTimeLogsService.ToDisAbsoluteTimestamp(endUnixTs);
+            }
         }
 
         private async Task OnTickAsync()

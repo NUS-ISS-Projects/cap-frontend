@@ -35,7 +35,6 @@ namespace DISTestKit.Model
                         ? "Timestamp"
                         : ToHumanName(rawKey);
 
-                    // **2) Format the value (strip T/Z or parse + re-format)**
                     string prettyVal = rawKey.Equals(
                         "timestampHuman",
                         StringComparison.OrdinalIgnoreCase

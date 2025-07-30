@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows.Media;
+using DISTestKit.Model;
 using LiveCharts;
 using LiveCharts.Defaults;
 using LiveCharts.Wpf;
-using System.Timers;
-using System.Collections.ObjectModel;
-using DISTestKit.Model;
 
 namespace DISTestKit.ViewModel
 {
@@ -23,19 +23,20 @@ namespace DISTestKit.ViewModel
         private ChartValues<DateTimePoint> _chartValues;
         public Func<double, string> IntFormatter { get; set; } = val => ((int)val).ToString();
         public Separator IntSeparator { get; set; } = new Separator { Step = 1 };
+
         public DataVolumeChartViewModel()
         {
             _chartValues = new ChartValues<DateTimePoint>();
 
             SeriesCollection = new SeriesCollection
-        {
-            new LineSeries
             {
-                Title = "",
-                Values = _chartValues,
-                PointGeometrySize = 5
-            }
-        };
+                new LineSeries
+                {
+                    Title = "",
+                    Values = _chartValues,
+                    PointGeometrySize = 5,
+                },
+            };
 
             XFormatter = val => new DateTime((long)val).ToString("HH:mm:ss");
             var now = DateTime.Now;
@@ -61,6 +62,7 @@ namespace DISTestKit.ViewModel
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
         protected void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
@@ -74,7 +76,4 @@ namespace DISTestKit.ViewModel
                 values.Remove(item);
         }
     }
-
 }
-
-
