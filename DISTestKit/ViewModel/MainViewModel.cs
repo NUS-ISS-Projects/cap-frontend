@@ -64,6 +64,7 @@ namespace DISTestKit.ViewModel
                     SelectedDate = DateTime.Now.Date;
                     _lastTimestamp = 0;
                     SelectedPeriod = Period.None;
+                    VolumeVm.ConfigureForRealTime();
                 }
             }
         }
@@ -164,8 +165,12 @@ namespace DISTestKit.ViewModel
 
         public async Task LoadOnceAsync()
         {
-            VolumeVm.Clear();
-            LogsVm.Reset();
+            // Only clear charts when loading aggregated data (Today/Week/Month), not for real-time play
+            if (SelectedPeriod != Period.None)
+            {
+                VolumeVm.Clear();
+                LogsVm.Reset();
+            }
 
             if (IsPaused)
             {
@@ -179,6 +184,12 @@ namespace DISTestKit.ViewModel
                     startDate: SelectedTime.HasValue ? SelectedDate : null,
                     endDate: SelectedTime.HasValue ? SelectedDate : null
                 );
+
+                // Configure chart based on data type
+                if (SelectedPeriod == Period.Today)
+                {
+                    VolumeVm.ConfigureForAggregatedData(SelectedDate);
+                }
 
                 foreach (var b in agg.Buckets)
                 {

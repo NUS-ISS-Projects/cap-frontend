@@ -14,6 +14,25 @@ namespace DISTestKit.ViewModel
 
         public void Clear() => _values.Clear();
 
+        public void ConfigureForAggregatedData(DateTime startDate)
+        {
+            // Configure for 24-hour view with hourly intervals
+            XAxes[0].Labeler = value => new DateTime((long)value).ToString("HH:mm");
+            XAxes[0].MinLimit = startDate.Ticks;
+            XAxes[0].MaxLimit = startDate.AddDays(1).Ticks;
+            XAxes[0].UnitWidth = TimeSpan.FromHours(1).Ticks;
+        }
+
+        public void ConfigureForRealTime()
+        {
+            // Configure for 1-minute real-time view
+            var now = DateTime.Now;
+            XAxes[0].Labeler = value => new DateTime((long)value).ToString("HH:mm:ss");
+            XAxes[0].MinLimit = now.AddMinutes(-1).Ticks;
+            XAxes[0].MaxLimit = now.Ticks;
+            XAxes[0].UnitWidth = TimeSpan.FromMinutes(1).Ticks;
+        }
+
         public ObservableCollection<ISeries> Series { get; }
         public Axis[] XAxes { get; }
         public Axis[] YAxes { get; }
@@ -40,6 +59,7 @@ namespace DISTestKit.ViewModel
                     MinLimit = now.AddMinutes(-1).Ticks,
                     MaxLimit = now.Ticks,
                     TicksPaint = new SolidColorPaint(new SKColor(80, 132, 221)),
+                    UnitWidth = TimeSpan.FromMinutes(1).Ticks,
                 },
             ];
             YAxes = [new Axis { MinLimit = 0, MaxLimit = 3000 }];
@@ -48,9 +68,9 @@ namespace DISTestKit.ViewModel
         public void Update(DateTimePoint point)
         {
             _values.Add(point);
-            if (_values.Count > 60)
+            if (_values.Count > 3000)
                 _values.RemoveAt(0);
-            XAxes[0].MinLimit = _values[0].DateTime.Ticks;
+            XAxes[0].MinLimit = point.DateTime.AddMinutes(-1).Ticks;
             XAxes[0].MaxLimit = point.DateTime.Ticks;
 
             var maxY = _values.Select(v => v.Value).DefaultIfEmpty(0).Max();
