@@ -10,8 +10,10 @@
     xmlns:xtk="http://schemas.xceed.com/wpf/xaml/toolkit"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     Title="ST Engineering DIS System"
-    Height="600"
-    Width="1000"
+    Height="1000"
+    Width="1200"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterScreen"
     Background="#e8eaf0">
 
     <DockPanel>

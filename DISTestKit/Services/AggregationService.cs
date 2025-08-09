@@ -58,9 +58,17 @@ namespace DISTestKit.Services
             if (today)
                 q.Add("today=true");
             else if (week)
+            {
                 q.Add("week=true");
+                if (startDate.HasValue)
+                    q.Add($"startDate={startDate.Value:yyyy-MM-dd}");
+            }
             else if (month)
+            {
                 q.Add("month=true");
+                if (startDate.HasValue)
+                    q.Add($"startDate={startDate.Value:yyyy-MM-dd}");
+            }
             else if (date.HasValue)
                 q.Add($"date={date.Value:yyyy-MM-dd}");
             else if (startDate.HasValue && endDate.HasValue)

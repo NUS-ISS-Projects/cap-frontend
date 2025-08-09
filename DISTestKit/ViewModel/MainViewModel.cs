@@ -118,7 +118,12 @@ namespace DISTestKit.ViewModel
                 _selectedPeriod = value;
                 OnPropertyChanged(nameof(SelectedPeriod));
                 if (value != Period.None)
-                    IsPlaying = false;
+                {
+                    _isPlaying = false; // Set directly to avoid triggering LoadOnceAsync twice
+                    OnPropertyChanged(nameof(IsPlaying));
+                    OnPropertyChanged(nameof(IsPaused));
+                    _timer.Enabled = false;
+                }
             }
         }
         public ICommand TodayCommand { get; }
@@ -145,9 +150,21 @@ namespace DISTestKit.ViewModel
             ComparisonVm = new PduTypeComparisonViewModel();
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
-            TodayCommand = new RelayCommand(() => SelectedPeriod = Period.Today);
-            WeekCommand = new RelayCommand(() => SelectedPeriod = Period.Week);
-            MonthCommand = new RelayCommand(() => SelectedPeriod = Period.Month);
+            TodayCommand = new RelayCommand(() => 
+            {
+                SelectedPeriod = Period.Today;
+                _ = LoadOnceAsync();
+            });
+            WeekCommand = new RelayCommand(() => 
+            {
+                SelectedPeriod = Period.Week;
+                _ = LoadOnceAsync();
+            });
+            MonthCommand = new RelayCommand(() => 
+            {
+                SelectedPeriod = Period.Month;
+                _ = LoadOnceAsync();
+            });
 
             PlayCommand = new RelayCommand(() => IsPlaying = !IsPlaying);
             RefreshCommand = new RelayCommand(() =>
@@ -181,28 +198,31 @@ namespace DISTestKit.ViewModel
                     date: SelectedPeriod == Period.None && !SelectedTime.HasValue
                         ? SelectedDate
                         : (DateTime?)null,
-                    startDate: SelectedTime.HasValue ? SelectedDate : null,
+                    startDate: SelectedTime.HasValue ? SelectedDate 
+                             : (SelectedPeriod == Period.Week || SelectedPeriod == Period.Month) ? SelectedDate
+                             : null,
                     endDate: SelectedTime.HasValue ? SelectedDate : null
                 );
 
-                // Configure chart based on data type
-                if (SelectedPeriod == Period.Today)
-                {
-                    VolumeVm.ConfigureForAggregatedData(SelectedDate);
-                }
-
+                // Add all data points first
+                var weekIndex = 0;
                 foreach (var b in agg.Buckets)
                 {
                     DateTime when = agg.TimeUnit switch
                     {
                         "hour" => SelectedDate.AddHours(b.Hour ?? 0),
                         "day" => DateTime.Parse(b.Date!),
-                        "week" => SelectedDate,
+                        "week" => DateTime.Parse(agg.Start).AddDays(weekIndex * 7),
                         _ => SelectedDate,
                     };
+                    
+                    if (agg.TimeUnit == "week") weekIndex++;
 
-                    VolumeVm.Update(new DateTimePoint(when, b.TotalPackets));
+                    VolumeVm.AddAggregatedDataPoint(new DateTimePoint(when, b.TotalPackets));
                 }
+
+                // Then configure chart dynamically based on actual data
+                VolumeVm.FinalizeAggregatedData(agg.TimeUnit);
             }
             else
             {
