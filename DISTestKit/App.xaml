@@ -59,7 +59,7 @@
                             Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                             Value="{x:Static vm:Period.Today}" />
                         </MultiDataTrigger.Conditions>
-                        <Setter Property="Background" Value="Blue"/>
+                        <Setter Property="Background" Value="#5084DD"/>
                         <Setter Property="Foreground" Value="White"/>
                     </MultiDataTrigger>
                     <!-- Week -->
@@ -72,7 +72,7 @@
                             Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                             Value="{x:Static vm:Period.Week}" />
                         </MultiDataTrigger.Conditions>
-                        <Setter Property="Background" Value="Blue"/>
+                        <Setter Property="Background" Value="#5084DD"/>
                         <Setter Property="Foreground" Value="White"/>
                     </MultiDataTrigger>
                     <!-- Month -->
@@ -85,7 +85,7 @@
                             Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                             Value="{x:Static vm:Period.Month}" />
                         </MultiDataTrigger.Conditions>
-                        <Setter Property="Background" Value="Blue"/>
+                        <Setter Property="Background" Value="#5084DD"/>
                         <Setter Property="Foreground" Value="White"/>
                     </MultiDataTrigger>
                 </Style.Triggers>

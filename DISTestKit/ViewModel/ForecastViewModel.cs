@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Input;
 using DISTestKit.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -46,11 +47,39 @@ namespace DISTestKit.ViewModel
             }
         }
 
+        // Period selection
+        private Period _selectedPeriod = Period.None;
+        public Period SelectedPeriod
+        {
+            get => _selectedPeriod;
+            set
+            {
+                if (_selectedPeriod == value)
+                    return;
+                _selectedPeriod = value;
+                OnPropertyChanged(nameof(SelectedPeriod));
+                RefreshHistorical();
+            }
+        }
+
+        public ICommand TodayCommand { get; }
+        public ICommand WeekCommand { get; }
+        public ICommand MonthCommand { get; }
+
         private readonly RealTimeMetricsService _svc;
 
         public ForecastViewModel(RealTimeMetricsService svc)
         {
             _svc = svc;
+            
+            // Initialize commands
+            TodayCommand = new RelayCommand(() => SelectedPeriod = Period.Today);
+            WeekCommand = new RelayCommand(() => SelectedPeriod = Period.Week);
+            MonthCommand = new RelayCommand(() => SelectedPeriod = Period.Month);
+            
+            // Ensure SelectedDate is set to today's date
+            _selectedDate = DateTime.Today;
+            
             // build chart series
             var vals = new ObservableCollection<DateTimePoint>();
             VolumeSeries = new ObservableCollection<ISeries>

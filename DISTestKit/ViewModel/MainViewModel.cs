@@ -64,6 +64,7 @@ namespace DISTestKit.ViewModel
                     SelectedDate = DateTime.Now.Date;
                     _lastTimestamp = 0;
                     SelectedPeriod = Period.None;
+                    VolumeVm.Clear(); // Clear aggregated data before switching to real-time
                     VolumeVm.ConfigureForRealTime();
                 }
             }
@@ -150,17 +151,17 @@ namespace DISTestKit.ViewModel
             ComparisonVm = new PduTypeComparisonViewModel();
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
-            TodayCommand = new RelayCommand(() => 
+            TodayCommand = new RelayCommand(() =>
             {
                 SelectedPeriod = Period.Today;
                 _ = LoadOnceAsync();
             });
-            WeekCommand = new RelayCommand(() => 
+            WeekCommand = new RelayCommand(() =>
             {
                 SelectedPeriod = Period.Week;
                 _ = LoadOnceAsync();
             });
-            MonthCommand = new RelayCommand(() => 
+            MonthCommand = new RelayCommand(() =>
             {
                 SelectedPeriod = Period.Month;
                 _ = LoadOnceAsync();
@@ -198,9 +199,10 @@ namespace DISTestKit.ViewModel
                     date: SelectedPeriod == Period.None && !SelectedTime.HasValue
                         ? SelectedDate
                         : (DateTime?)null,
-                    startDate: SelectedTime.HasValue ? SelectedDate 
-                             : (SelectedPeriod == Period.Week || SelectedPeriod == Period.Month) ? SelectedDate
-                             : null,
+                    startDate: SelectedTime.HasValue ? SelectedDate
+                        : (SelectedPeriod == Period.Week || SelectedPeriod == Period.Month)
+                            ? SelectedDate
+                        : null,
                     endDate: SelectedTime.HasValue ? SelectedDate : null
                 );
 
@@ -215,8 +217,9 @@ namespace DISTestKit.ViewModel
                         "week" => DateTime.Parse(agg.Start).AddDays(weekIndex * 7),
                         _ => SelectedDate,
                     };
-                    
-                    if (agg.TimeUnit == "week") weekIndex++;
+
+                    if (agg.TimeUnit == "week")
+                        weekIndex++;
 
                     VolumeVm.AddAggregatedDataPoint(new DateTimePoint(when, b.TotalPackets));
                 }

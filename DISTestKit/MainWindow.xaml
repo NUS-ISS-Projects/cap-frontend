@@ -35,49 +35,84 @@
                 CornerRadius="8"
                 Margin="10,20,10,10"
                 Effect="{StaticResource Shadow}">
-            <StackPanel>
-                <TextBlock Text="Hello, Cindy!" FontFamily="Arial" FontSize="15" FontWeight="Bold" Margin="0,20,0,20" HorizontalAlignment="Center"/>
-                <Button x:Name="DashboardButton" Click="DashboardButton_Click" Style="{StaticResource NavigationButton}">
+            <DockPanel>
+                <!-- Clock section at the bottom -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,0,10,20">
+                    <Border Height="1" Background="LightGray" Margin="0,0,0,15"/>
+                    
+                    <!-- Clock icon and Time heading -->
                     <Grid Width="120" Margin="0,0,0,5">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Grid.Column="0" Symbol="DataHistogram20" Width="20" Height="20" Margin="0,0,5,0"/>
-                        <TextBlock Grid.Column="1" Text="Dashboard" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="Clock20" Width="20" Height="20" Margin="0,0,5,0" Foreground="#5084DD"/>
+                        <TextBlock Grid.Column="1" Text="Time" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     </Grid>
-                </Button>
-                <Button x:Name="ForecastButton" Click="ForecastButton_Click" Style="{StaticResource NavigationButton}">
-                    <Grid Width="120" Margin="0,0,0,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Grid.Column="0" Symbol="BrainCircuit20" Width="20" Height="20" Margin="0,0,5,0"/>
-                        <TextBlock Grid.Column="1" Text="Forecast" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    </Grid>
-                </Button>
-                <Button x:Name="NotificationButton" Style="{StaticResource NavigationButton}">
-                    <Grid Width="120" Margin="0,0,0,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Grid.Column="0" Symbol="ServiceBell20" Width="20" Height="20" Margin="0,0,5,0"/>
-                        <TextBlock Grid.Column="1" Text="Notifcations" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    </Grid>
-                </Button>
-                <Button x:Name="SettingButton" Click="SettingsButton_Click" Style="{StaticResource NavigationButton}">
-                    <Grid Width="120" Margin="0,0,0,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Grid.Column="0" Symbol="Settings20" Width="20" Height="20" Margin="0,0,5,0"/>
-                        <TextBlock Grid.Column="1" Text="Settings" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    </Grid>
-                </Button>
-            </StackPanel>
+                    
+                    <!-- Current date display -->
+                    <TextBlock x:Name="CurrentDateText" 
+                               Text="01/01/2024" 
+                               FontFamily="Arial" 
+                               FontSize="12" 
+                               HorizontalAlignment="Left" 
+                               Foreground="#666666"
+                               Margin="8,0,0,3"/>
+                    
+                    <!-- Current local time display -->
+                    <TextBlock x:Name="CurrentTimeText" 
+                               Text="12:00:00" 
+                               FontFamily="Arial" 
+                               FontSize="12" 
+                               HorizontalAlignment="Left" 
+                               Margin="8,0,0,0"
+                               Foreground="#666666"/>
+                </StackPanel>
+                
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="Hello, Cindy!" FontFamily="Arial" FontSize="15" FontWeight="Bold" Margin="0,20,0,20" HorizontalAlignment="Center"/>
+                    <Button x:Name="DashboardButton" Click="DashboardButton_Click" Style="{StaticResource NavigationButton}">
+                        <Grid Width="120" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon Grid.Column="0" Symbol="DataHistogram20" Width="20" Height="20" Margin="0,0,5,0" Foreground="#5084DD"/>
+                            <TextBlock Grid.Column="1" Text="Dashboard" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        </Grid>
+                    </Button>
+                    <Button x:Name="ForecastButton" Click="ForecastButton_Click" Style="{StaticResource NavigationButton}">
+                        <Grid Width="120" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon Grid.Column="0" Symbol="BrainCircuit20" Width="20" Height="20" Margin="0,0,5,0" Foreground="#5084DD"/>
+                            <TextBlock Grid.Column="1" Text="Forecast" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        </Grid>
+                    </Button>
+                    <Button x:Name="NotificationButton" Style="{StaticResource NavigationButton}">
+                        <Grid Width="120" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon Grid.Column="0" Symbol="ServiceBell20" Width="20" Height="20" Margin="0,0,5,0" Foreground="#5084DD"/>
+                            <TextBlock Grid.Column="1" Text="Notifcations" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        </Grid>
+                    </Button>
+                    <Button x:Name="SettingButton" Click="SettingsButton_Click" Style="{StaticResource NavigationButton}">
+                        <Grid Width="120" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon Grid.Column="0" Symbol="Settings20" Width="20" Height="20" Margin="0,0,5,0" Foreground="#5084DD"/>
+                            <TextBlock Grid.Column="1" Text="Settings" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <ContentControl

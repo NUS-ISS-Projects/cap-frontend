@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
              xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DISTestKit.ViewModel">
     <Grid Margin="0,10,10,10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="600" />
@@ -16,9 +17,41 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" Margin="0,0,0,10">
-            <Border Background="#F8F9FA" CornerRadius="8">
-                <DatePicker SelectedDate="{Binding SelectedDate}" />
-            </Border>
+            <DatePicker x:Name="DatePicker"
+                SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                Margin="0,0,10,0"
+                Height="60"
+                Width="250"
+                VerticalAlignment="Center"/>
+
+            <Button x:Name="TodayButton"
+                Tag="{x:Static vm:Period.Today}"
+                Content="Today"
+                Command="{Binding TodayCommand}"
+                MinWidth="50"
+                Height="30"
+                FontWeight="Bold"
+                Style="{StaticResource PeriodButtonStyle}"/>
+
+            <Button x:Name="WeekButton"
+                Tag="{x:Static vm:Period.Week}"
+                Content="Week"
+                Command="{Binding WeekCommand}"
+                MinWidth="50"
+                Height="30"
+                FontWeight="Bold"
+                Margin="10,0,0,0"
+                Style="{StaticResource PeriodButtonStyle}"/>
+
+            <Button x:Name="MonthButton"
+                Tag="{x:Static vm:Period.Month}"
+                Content="Month"
+                Command="{Binding MonthCommand}"
+                MinWidth="50"
+                Height="30"
+                FontWeight="Bold"
+                Margin="10,0,0,0"
+                Style="{StaticResource PeriodButtonStyle}"/>
         </StackPanel>
 
         <!-- Top metrics -->
