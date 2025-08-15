@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using DISTestKit.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -11,6 +14,19 @@ using SkiaSharp;
 
 namespace DISTestKit.ViewModel
 {
+    public class ChatMessage
+    {
+        public string Message { get; set; } = "";
+        public bool IsFromUser { get; set; }
+        public Brush Background =>
+            IsFromUser
+                ? new SolidColorBrush(Color.FromRgb(80, 132, 221))
+                : new SolidColorBrush(Color.FromRgb(240, 240, 240));
+        public Brush Foreground => IsFromUser ? Brushes.White : Brushes.Black;
+        public HorizontalAlignment Alignment =>
+            IsFromUser ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+    }
+
     public class ForecastViewModel : PageViewModel, INotifyPropertyChanged
     {
         // volume chart
@@ -66,20 +82,59 @@ namespace DISTestKit.ViewModel
         public ICommand WeekCommand { get; }
         public ICommand MonthCommand { get; }
 
+        // Chat functionality
+        public ObservableCollection<ChatMessage> ChatMessages { get; }
+        public ObservableCollection<string> TimePeriods { get; }
+        public ICommand SendMessageCommand { get; }
+
+        private string _chatInputText = "";
+        public string ChatInputText
+        {
+            get => _chatInputText;
+            set
+            {
+                _chatInputText = value;
+                OnPropertyChanged(nameof(ChatInputText));
+                OnPropertyChanged(nameof(CanSendMessage));
+            }
+        }
+
+        private string _selectedTimePeriod = "24 hours";
+        public string SelectedTimePeriod
+        {
+            get => _selectedTimePeriod;
+            set
+            {
+                _selectedTimePeriod = value;
+                OnPropertyChanged(nameof(SelectedTimePeriod));
+                UpdateChatInputPreview();
+            }
+        }
+
+        public bool CanSendMessage => !string.IsNullOrWhiteSpace(ChatInputText);
+
         private readonly RealTimeMetricsService _svc;
 
         public ForecastViewModel(RealTimeMetricsService svc)
         {
             _svc = svc;
-            
+
+            // Initialize chat functionality
+            ChatMessages = new ObservableCollection<ChatMessage>();
+            TimePeriods = new ObservableCollection<string> { "24 hours", "week", "month" };
+            SendMessageCommand = new RelayCommand(SendMessage);
+
             // Initialize commands
             TodayCommand = new RelayCommand(() => SelectedPeriod = Period.Today);
             WeekCommand = new RelayCommand(() => SelectedPeriod = Period.Week);
             MonthCommand = new RelayCommand(() => SelectedPeriod = Period.Month);
-            
+
+            // Set initial chat input preview
+            UpdateChatInputPreview();
+
             // Ensure SelectedDate is set to today's date
             _selectedDate = DateTime.Today;
-            
+
             // build chart series
             var vals = new ObservableCollection<DateTimePoint>();
             VolumeSeries = new ObservableCollection<ISeries>
@@ -138,9 +193,66 @@ namespace DISTestKit.ViewModel
             // then repopulate VolumeSeries[0].Values and metrics
         }
 
+        private void UpdateChatInputPreview()
+        {
+            ChatInputText = $"Analyze for me the data for the past {SelectedTimePeriod}";
+        }
+
+        private void SendMessage()
+        {
+            if (string.IsNullOrWhiteSpace(ChatInputText))
+                return;
+
+            // Add user message
+            var userMessage = new ChatMessage { Message = ChatInputText, IsFromUser = true };
+
+            ChatMessages.Add(userMessage);
+
+            // Clear input
+            var sentMessage = ChatInputText;
+            ChatInputText = "";
+
+            // Simulate AI response (you can replace this with actual AI integration)
+            var aiResponse = GenerateAIResponse(sentMessage);
+            var aiMessage = new ChatMessage { Message = aiResponse, IsFromUser = false };
+
+            ChatMessages.Add(aiMessage);
+
+            // Reset input to preview text
+            UpdateChatInputPreview();
+        }
+
+        private string GenerateAIResponse(string userMessage)
+        {
+            // This is a placeholder for actual AI integration
+            // You can replace this with calls to your AI service
+
+            if (userMessage.ToLower().Contains("24 hours"))
+            {
+                return "Based on the data from the past 24 hours, I can see patterns in your DIS network traffic. The volume shows peak activity during business hours with an average of X messages per second. Would you like me to analyze specific aspects like PDU types or network performance?";
+            }
+            else if (userMessage.ToLower().Contains("week"))
+            {
+                return "Analyzing the weekly data shows interesting trends. There's typically higher activity on weekdays compared to weekends. The data suggests optimal network performance with occasional spikes during training exercises. Would you like a detailed breakdown of the patterns?";
+            }
+            else if (userMessage.ToLower().Contains("month"))
+            {
+                return "The monthly analysis reveals long-term trends in your DIS system usage. I notice cyclical patterns that align with training schedules and system maintenance windows. Overall network health appears stable with predictable load patterns.";
+            }
+            else
+            {
+                return "I understand you'd like analysis of your DIS data. I can help analyze network performance, identify patterns, predict traffic spikes, and provide insights on system optimization. What specific aspect would you like me to focus on?";
+            }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         protected void OnPropertyChanged(string n) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+
+        public void Dispose()
+        {
+            // Cleanup if needed
+        }
     }
 }

@@ -83,7 +83,7 @@
           AnimationsSpeed="0:0:0"
           EasingFunction="{x:Null}" />
 
-        <!-- Chatbot placeholder -->
+        <!-- AI Chat Interface -->
         <Border Grid.Row="0" Grid.RowSpan="4" Grid.Column="1"
             Background="#FFFFFF" CornerRadius="8" 
             Padding="16" Margin="12,0,0,0" 
@@ -94,16 +94,135 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="Analyze by AI" FontWeight="Bold" FontFamily="Arial" FontSize="16"/>
-                <ListBox Grid.Row="1" Margin="0,8,0,8"/>
-                <Grid Grid.Row="2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0" Margin="0,0,8,0" />
-                    <Button Grid.Column="1" Content="Send" />
-                </Grid>
+                
+                <!-- Header -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="Analyze by AI" 
+                               FontWeight="Bold" 
+                               FontFamily="Arial" 
+                               FontSize="16"
+                               VerticalAlignment="Center"/>
+                    <ui:SymbolIcon Symbol="Sparkle20" 
+                                   Width="25" 
+                                   Height="25" 
+                                   Foreground="#5084DD"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+                </StackPanel>
+                
+                <!-- Chat Messages Area -->
+                <ScrollViewer Grid.Row="1" Margin="0,0,0,10" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ListBox x:Name="ChatMessages" 
+                             ItemsSource="{Binding ChatMessages}"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding Background}" 
+                                        CornerRadius="8" 
+                                        Padding="10" 
+                                        Margin="5,2"
+                                        HorizontalAlignment="{Binding Alignment}">
+                                    <TextBlock Text="{Binding Message}" 
+                                               TextWrapping="Wrap" 
+                                               Foreground="{Binding Foreground}"
+                                               FontFamily="Arial"/>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </ScrollViewer>
+                
+                <!-- Input Area at Bottom -->
+                <Border Grid.Row="2" 
+                        BorderBrush="#CCCCCC" 
+                        BorderThickness="1" 
+                        CornerRadius="4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        
+                        <!-- Dropdown and Send Button in gray zone at bottom -->
+                        <Border Grid.Row="1" 
+                                Background="#F8F9FA" 
+                                Padding="10,8"
+                                BorderBrush="#E1E1E1"
+                                BorderThickness="0,1,0,0"
+                                MinHeight="50">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <ComboBox Grid.Column="0" 
+                                          x:Name="TimePeriodComboBox"
+                                          SelectedItem="{Binding SelectedTimePeriod, Mode=TwoWay}"
+                                          ItemsSource="{Binding TimePeriods}"
+                                          Width="120" 
+                                          Height="34"
+                                          FontSize="12"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,10,0"/>
+                                
+                                <Button Grid.Column="2" 
+                                        Command="{Binding SendMessageCommand}"
+                                        IsEnabled="{Binding CanSendMessage}"
+                                        Padding="20,8"
+                                        MinWidth="80"
+                                        Height="34"
+                                        Background="#5084DD"
+                                        Foreground="White"
+                                        BorderThickness="0"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource RoundedButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Send" 
+                                                   FontFamily="Arial" 
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,6,0"/>
+                                        <ui:SymbolIcon Symbol="Send20" 
+                                                       Width="16" 
+                                                       Height="16" 
+                                                       Foreground="White"
+                                                       VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+                        <!-- Text input area -->
+                        <TextBox Grid.Row="0" 
+                                 x:Name="ChatInput"
+                                 Text="{Binding ChatInputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="8" 
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="False"
+                                 MinHeight="40"
+                                 MaxHeight="80"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 VerticalScrollBarVisibility="Auto"
+                                 KeyDown="ChatInput_KeyDown"/>
+                    </Grid>
+                </Border>
             </Grid>
         </Border>
     </Grid>

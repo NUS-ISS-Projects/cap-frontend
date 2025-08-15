@@ -1,4 +1,6 @@
 ﻿using System.Windows.Controls;
+using System.Windows.Input;
+using DISTestKit.ViewModel;
 
 namespace DISTestKit.Pages
 {
@@ -10,6 +12,22 @@ namespace DISTestKit.Pages
         public ForecastPage()
         {
             InitializeComponent();
+            var realTimeService = new Services.RealTimeMetricsService(
+                "http://localhost:32080/api/"
+            );
+            DataContext = new ForecastViewModel(realTimeService);
+        }
+
+        private void ChatInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                e.Handled = true;
+                if (DataContext is ForecastViewModel viewModel && viewModel.CanSendMessage)
+                {
+                    viewModel.SendMessageCommand.Execute(null);
+                }
+            }
         }
     }
 }
