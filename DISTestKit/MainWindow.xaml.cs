@@ -4,6 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using DISTestKit.Pages;
+using DISTestKit.Services;
 
 namespace DISTestKit
 {
@@ -16,7 +17,16 @@ namespace DISTestKit
             InitializeComponent();
             SetRobotIcon();
             InitializeTimer();
-            ShowLogin();
+            
+            // Check if user has a valid token
+            if (TokenManager.HasValidToken())
+            {
+                ShowDashboard();
+            }
+            else
+            {
+                ShowLogin();
+            }
         }
 
         private void SetRobotIcon()
@@ -121,5 +131,11 @@ namespace DISTestKit
         private void ForecastButton_Click(object sender, RoutedEventArgs e) => ShowForecast();
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
+
+        public void Logout()
+        {
+            TokenManager.ClearToken();
+            ShowLogin();
+        }
     }
 }
