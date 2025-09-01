@@ -8,40 +8,40 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Media;
 using DISTestKit.Model;
-using LiveCharts;
-using LiveCharts.Defaults;
-using LiveCharts.Wpf;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
 
 namespace DISTestKit.ViewModel
 {
     public class DataVolumeChartViewModel : INotifyPropertyChanged
     {
-        public SeriesCollection SeriesCollection { get; set; }
-        public Func<double, string> XFormatter { get; set; }
-        public double MinX { get; set; }
-        public double MaxX { get; set; }
-        private ChartValues<DateTimePoint> _chartValues;
-        public Func<double, string> IntFormatter { get; set; } = val => ((int)val).ToString();
-        public Separator IntSeparator { get; set; } = new Separator { Step = 1 };
+        public ISeries[] Series { get; set; }
+        public Axis[] XAxes { get; set; }
+        public Axis[] YAxes { get; set; }
+        private ObservableCollection<DateTimePoint> _chartValues;
 
         public DataVolumeChartViewModel()
         {
-            _chartValues = new ChartValues<DateTimePoint>();
+            _chartValues = new ObservableCollection<DateTimePoint>();
 
-            SeriesCollection = new SeriesCollection
+            Series = new ISeries[]
             {
-                new LineSeries
+                new LineSeries<DateTimePoint>
                 {
-                    Title = "",
                     Values = _chartValues,
-                    PointGeometrySize = 5,
+                    GeometrySize = 5,
+                    Mapping = (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(point.DateTime.Ticks, point.Value),
                 },
             };
 
-            XFormatter = val => new DateTime((long)val).ToString("HH:mm:ss");
-            var now = DateTime.Now;
-            MinX = now.AddMinutes(-1).Ticks;
-            MaxX = now.Ticks;
+            XAxes = new Axis[]
+            {
+                new Axis { Labeler = value => new DateTime((long)value).ToString("HH:mm:ss") },
+            };
+
+            YAxes = new Axis[] { new Axis { Labeler = value => ((int)value).ToString() } };
         }
 
         public void AddDataPoint(DateTime time, int messageCount)
@@ -49,14 +49,16 @@ namespace DISTestKit.ViewModel
             App.Current.Dispatcher.Invoke(() =>
             {
                 _chartValues.Add(new DateTimePoint(time, messageCount));
-                _chartValues.RemoveAll(v => v.DateTime < DateTime.Now.AddMinutes(-1));
+
+                var cutOffTime = DateTime.Now.AddMinutes(-1);
+                var toRemove = _chartValues.Where(v => v.DateTime < cutOffTime).ToList();
+                foreach (var item in toRemove)
+                    _chartValues.Remove(item);
 
                 if (_chartValues.Count > 1)
                 {
-                    MinX = _chartValues[0].DateTime.Ticks;
-                    MaxX = _chartValues[^1].DateTime.Ticks;
-                    OnPropertyChanged(nameof(MinX));
-                    OnPropertyChanged(nameof(MaxX));
+                    XAxes[0].MinLimit = _chartValues[0].DateTime.Ticks;
+                    XAxes[0].MaxLimit = _chartValues[^1].DateTime.Ticks;
                 }
             });
         }
@@ -67,13 +69,15 @@ namespace DISTestKit.ViewModel
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public static class ChartValuesExtensions
+    public class DateTimePoint
     {
-        public static void RemoveAll<T>(this ChartValues<T> values, Func<T, bool> predicate)
+        public DateTime DateTime { get; set; }
+        public double Value { get; set; }
+
+        public DateTimePoint(DateTime dateTime, double value)
         {
-            var toRemove = values.Where(predicate).ToList();
-            foreach (var item in toRemove)
-                values.Remove(item);
+            DateTime = dateTime;
+            Value = value;
         }
     }
 }

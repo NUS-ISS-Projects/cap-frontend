@@ -93,7 +93,7 @@ namespace DISTestKit.ViewModel
             if (padding == 0)
                 padding = 10;
 
-            var maxLimit = Math.Ceiling((maxY + padding).GetValueOrDefault());
+            var maxLimit = Math.Ceiling(maxY + padding);
             YAxes[0].MinLimit = 0;
             YAxes[0].MaxLimit = maxLimit;
 
@@ -192,7 +192,7 @@ namespace DISTestKit.ViewModel
             if (padding == 0)
                 padding = 10;
 
-            var maxLimit = Math.Ceiling((maxY + padding).GetValueOrDefault());
+            var maxLimit = Math.Ceiling(maxY + padding);
             YAxes[0].MinLimit = 0;
             YAxes[0].MaxLimit = maxLimit;
 

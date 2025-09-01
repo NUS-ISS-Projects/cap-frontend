@@ -1,23 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <NoWarn>NU1701</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="OpenDis">
-      <HintPath>Library\OpenDis.dll</HintPath>
-    </Reference>
-  </ItemGroup>
   <ItemGroup>
     <Folder Include="Model\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Extended.Wpf.Toolkit" Version="4.7.25104.5739" />
-    <PackageReference Include="LiveCharts.Wpf" Version="0.9.7" />
-    <PackageReference Include="LiveChartsCore" Version="2.0.0-rc5.4" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc5.4" />
     <PackageReference Include="WPF-UI" Version="4.0.2" />
   </ItemGroup>

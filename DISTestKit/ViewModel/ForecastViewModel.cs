@@ -187,7 +187,7 @@ namespace DISTestKit.ViewModel
         //     }
         // }
 
-        private async void RefreshHistorical()
+        private void RefreshHistorical()
         {
             // TODO: fetch historical data for SelectedDate+Time → SelectedDate+Time+1h
             // then repopulate VolumeSeries[0].Values and metrics

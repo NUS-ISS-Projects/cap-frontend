@@ -16,7 +16,11 @@ namespace DISTestKit.ViewModel
 
         public void Execute(object? _) => _execute();
 
-        public event EventHandler? CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
     }
 
     public enum Period
