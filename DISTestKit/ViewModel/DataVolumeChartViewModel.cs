@@ -9,6 +9,7 @@ using System.Timers;
 using System.Windows.Media;
 using DISTestKit.Model;
 using LiveChartsCore;
+using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 
@@ -31,8 +32,11 @@ namespace DISTestKit.ViewModel
                 {
                     Values = _chartValues,
                     GeometrySize = 5,
-                    Mapping = (point, index) =>
-                        new LiveChartsCore.Kernel.Coordinate(point.DateTime.Ticks, point.Value),
+                    Mapping = static (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(
+                            point.DateTime.Ticks,
+                            point.Value ?? 0
+                        ),
                 },
             };
 
@@ -67,17 +71,5 @@ namespace DISTestKit.ViewModel
 
         protected void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-    }
-
-    public class DateTimePoint
-    {
-        public DateTime DateTime { get; set; }
-        public double Value { get; set; }
-
-        public DateTimePoint(DateTime dateTime, double value)
-        {
-            DateTime = dateTime;
-            Value = value;
-        }
     }
 }

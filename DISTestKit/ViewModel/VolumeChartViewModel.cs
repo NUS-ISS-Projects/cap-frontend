@@ -47,7 +47,7 @@ namespace DISTestKit.ViewModel
         {
             Series = new ObservableCollection<ISeries>
             {
-                new LineSeries<DateTimePoint>
+                new ColumnSeries<DateTimePoint>
                 {
                     Name = "Volume",
                     Values = _values,
@@ -88,7 +88,7 @@ namespace DISTestKit.ViewModel
             XAxes[0].MinLimit = point.DateTime.AddMinutes(-1).Ticks;
             XAxes[0].MaxLimit = point.DateTime.Ticks;
 
-            var maxY = _values.Select(v => v.Value).DefaultIfEmpty(0).Max();
+            var maxY = _values.Select(v => v.Value ?? 0).DefaultIfEmpty(0).Max();
             var padding = maxY * 0.2;
             if (padding == 0)
                 padding = 10;
@@ -110,11 +110,26 @@ namespace DISTestKit.ViewModel
             _values.Add(point);
         }
 
+        private int GetWeekOfMonth(DateTime date, DateTime startOfMonth)
+        {
+            var dayOfMonth = date.Day;
+            var startDayOfWeek = (int)startOfMonth.DayOfWeek;
+            return ((dayOfMonth + startDayOfWeek - 2) / 7) + 1;
+        }
+
+        private int GetWeeksInMonth(DateTime startOfMonth)
+        {
+            var daysInMonth = DateTime.DaysInMonth(startOfMonth.Year, startOfMonth.Month);
+            var startDayOfWeek = (int)startOfMonth.DayOfWeek;
+            var totalDays = daysInMonth + startDayOfWeek - 1;
+            return (totalDays - 1) / 7 + 1;
+        }
+
         public void FinalizeAggregatedData(string timeUnit)
         {
             if (timeUnit == "day")
             {
-                // For daily view, ensure we show exactly 7 days ending with the latest date
+                // For weekly view, ensure we show exactly 7 days ending with the latest date
                 var endDate =
                     _values.Count > 0 ? _values.Max(v => v.DateTime.Date) : DateTime.Today;
                 var startDate = endDate.AddDays(-6); // 7 days total including end date
@@ -154,19 +169,50 @@ namespace DISTestKit.ViewModel
             }
             else if (timeUnit == "week")
             {
-                // For weekly data (monthly view)
-                if (_values.Count == 0)
-                    return;
+                // For monthly view, show actual weeks in the month (4-6 weeks)
+                var endDate =
+                    _values.Count > 0 ? _values.Max(v => v.DateTime.Date) : DateTime.Today;
 
-                // Simple approach - just show Week 1, Week 2, etc. for all ticks
+                // Calculate start of the month containing endDate
+                var startOfMonth = new DateTime(endDate.Year, endDate.Month, 1);
+                var weeksInMonth = GetWeeksInMonth(startOfMonth);
+
+                // Create week periods based on actual weeks in month
+                var dataByWeek = new Dictionary<int, double>();
+
+                // Group existing data by week within the month
+                foreach (var point in _values)
+                {
+                    var weekOfMonth = GetWeekOfMonth(point.DateTime, startOfMonth);
+                    if (weekOfMonth >= 1 && weekOfMonth <= weeksInMonth)
+                    {
+                        if (!dataByWeek.ContainsKey(weekOfMonth))
+                            dataByWeek[weekOfMonth] = 0;
+                        dataByWeek[weekOfMonth] += point.Value ?? 0;
+                    }
+                }
+
+                // Clear existing values and rebuild with actual weeks
+                _values.Clear();
+
+                for (int week = 1; week <= weeksInMonth; week++)
+                {
+                    var weekStart = startOfMonth.AddDays((week - 1) * 7);
+                    var value = dataByWeek.GetValueOrDefault(week, 0);
+                    _values.Add(new DateTimePoint(weekStart, value));
+                }
+
+                // Configure X-axis for actual weeks in month
                 XAxes[0].Labeler = value =>
                 {
-                    // Find the closest data point to this tick
                     var tickTime = new DateTime((long)value);
+
+                    // Find the closest data point to this tick
                     var closestPoint = _values
                         .OrderBy(v => Math.Abs((v.DateTime - tickTime).TotalDays))
                         .FirstOrDefault();
 
+                    // Only show label if this tick is very close to one of our actual data points
                     if (
                         closestPoint != null
                         && Math.Abs((closestPoint.DateTime - tickTime).TotalDays) < 3.5
@@ -176,18 +222,20 @@ namespace DISTestKit.ViewModel
                         return $"Week {weekIndex}";
                     }
 
-                    return string.Empty;
+                    return string.Empty; // Hide extra labels
                 };
 
-                var minDate = _values.Min(v => v.DateTime);
-                var maxDate = _values.Max(v => v.DateTime);
-                XAxes[0].MinLimit = minDate.AddDays(-7).Ticks;
-                XAxes[0].MaxLimit = maxDate.AddDays(7).Ticks;
-                XAxes[0].UnitWidth = TimeSpan.FromDays(3.5).Ticks;
+                // Set limits with sufficient padding to show all bars fully
+                var firstWeekStart = startOfMonth;
+                var lastWeekStart = startOfMonth.AddDays((weeksInMonth - 1) * 7);
+
+                XAxes[0].MinLimit = firstWeekStart.AddDays(-12).Ticks; // More padding on left
+                XAxes[0].MaxLimit = lastWeekStart.AddDays(12).Ticks; // More padding on right
+                XAxes[0].UnitWidth = TimeSpan.FromDays(7).Ticks;
             }
 
             // Configure Y-axis based on actual data values
-            var maxY = _values.Select(v => v.Value).DefaultIfEmpty(0).Max();
+            var maxY = _values.Select(v => v.Value ?? 0).DefaultIfEmpty(0).Max();
             var padding = maxY * 0.2;
             if (padding == 0)
                 padding = 10;
