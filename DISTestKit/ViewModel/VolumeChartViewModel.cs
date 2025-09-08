@@ -26,6 +26,9 @@ namespace DISTestKit.ViewModel
 
         public void ConfigureForRealTime()
         {
+            // Switch to line series for real-time view
+            SwitchToLineSeries();
+
             // Configure for 1-minute real-time view
             var now = DateTime.Now;
             XAxes[0].Labeler = value => new DateTime((long)value).ToString("HH:mm:ss");
@@ -47,12 +50,15 @@ namespace DISTestKit.ViewModel
         {
             Series = new ObservableCollection<ISeries>
             {
-                new ColumnSeries<DateTimePoint>
+                new LineSeries<DateTimePoint>
                 {
                     Name = "Volume",
                     Values = _values,
                     Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
-                    Fill = new SolidColorPaint(new SKColor(80, 132, 221, 80)),
+                    Fill = null,
+                    GeometryFill = null,
+                    GeometryStroke = null,
+                    LineSmoothness = 1,
                 },
             };
 
@@ -78,6 +84,49 @@ namespace DISTestKit.ViewModel
                     Labeler = value => ((int)value).ToString(),
                 },
             ];
+        }
+
+        private void SwitchToLineSeries()
+        {
+            if (Series.Count > 0 && Series[0] is LineSeries<DateTimePoint>)
+                return;
+
+            Series.Clear();
+            Series.Add(
+                new LineSeries<DateTimePoint>
+                {
+                    Name = "Volume",
+                    Values = _values,
+                    Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
+                    Fill = null,
+                    GeometryFill = null,
+                    GeometryStroke = null,
+                    LineSmoothness = 1,
+                }
+            );
+        }
+
+        private void SwitchToRowSeries()
+        {
+            if (Series.Count > 0 && Series[0] is RowSeries<DateTimePoint>)
+                return; // Already row series
+
+            Series.Clear();
+            Series.Add(
+                new RowSeries<DateTimePoint>
+                {
+                    Name = "Volume",
+                    Values = _values,
+                    Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
+                    Fill = new SolidColorPaint(new SKColor(80, 132, 221, 80)),
+                    // For horizontal bars, map X as value (count) and Y as time (ticks)
+                    Mapping = static (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(
+                            point.Value ?? 0,
+                            point.DateTime.Ticks
+                        ),
+                }
+            );
         }
 
         public void Update(DateTimePoint point)
@@ -127,6 +176,18 @@ namespace DISTestKit.ViewModel
 
         public void FinalizeAggregatedData(string timeUnit)
         {
+            // Switch to appropriate series type based on time unit
+            if (timeUnit == "hour")
+            {
+                // Today view - keep as line series
+                SwitchToLineSeries();
+            }
+            else
+            {
+                // Week and month views - use row series (horizontal bar chart)
+                SwitchToRowSeries();
+            }
+
             if (timeUnit == "day")
             {
                 // For weekly view, ensure we show exactly 7 days ending with the latest date
@@ -147,11 +208,14 @@ namespace DISTestKit.ViewModel
                     _values.Add(new DateTimePoint(date, value));
                 }
 
-                // Configure X-axis for exactly 7 days - show all date labels
-                XAxes[0].Labeler = value => new DateTime((long)value).ToString("MM-dd");
-                XAxes[0].MinLimit = startDate.AddHours(-12).Ticks;
-                XAxes[0].MaxLimit = endDate.AddHours(12).Ticks;
-                XAxes[0].UnitWidth = TimeSpan.FromDays(1).Ticks;
+                // Configure Y-axis to show dates (for horizontal bars, Y-axis shows categories)
+                YAxes[0].Labeler = value => new DateTime((long)value).ToString("MM-dd");
+                YAxes[0].MinLimit = startDate.AddHours(-12).Ticks;
+                YAxes[0].MaxLimit = endDate.AddHours(12).Ticks;
+                YAxes[0].UnitWidth = TimeSpan.FromDays(1).Ticks;
+
+                // Configure X-axis to show values (for horizontal bars, X-axis shows values)
+                XAxes[0].Labeler = value => ((int)value).ToString();
             }
             else if (timeUnit == "hour")
             {
@@ -169,22 +233,21 @@ namespace DISTestKit.ViewModel
             }
             else if (timeUnit == "week")
             {
-                // For monthly view, show actual weeks in the month (4-6 weeks)
+                // For monthly view, always show exactly 5 weeks (Week 1 to Week 5)
                 var endDate =
                     _values.Count > 0 ? _values.Max(v => v.DateTime.Date) : DateTime.Today;
 
                 // Calculate start of the month containing endDate
                 var startOfMonth = new DateTime(endDate.Year, endDate.Month, 1);
-                var weeksInMonth = GetWeeksInMonth(startOfMonth);
 
-                // Create week periods based on actual weeks in month
+                // Create week periods based on existing data
                 var dataByWeek = new Dictionary<int, double>();
 
                 // Group existing data by week within the month
                 foreach (var point in _values)
                 {
                     var weekOfMonth = GetWeekOfMonth(point.DateTime, startOfMonth);
-                    if (weekOfMonth >= 1 && weekOfMonth <= weeksInMonth)
+                    if (weekOfMonth >= 1 && weekOfMonth <= 5) // Only consider weeks 1-5
                     {
                         if (!dataByWeek.ContainsKey(weekOfMonth))
                             dataByWeek[weekOfMonth] = 0;
@@ -192,63 +255,78 @@ namespace DISTestKit.ViewModel
                     }
                 }
 
-                // Clear existing values and rebuild with actual weeks
+                // Clear existing values and rebuild with exactly 5 weeks, evenly spaced
                 _values.Clear();
 
-                for (int week = 1; week <= weeksInMonth; week++)
+                // Create evenly spaced week positions (similar to how week view handles 7 days)
+                var baseDate = startOfMonth;
+                for (int week = 1; week <= 5; week++)
                 {
-                    var weekStart = startOfMonth.AddDays((week - 1) * 7);
-                    var value = dataByWeek.GetValueOrDefault(week, 0);
-                    _values.Add(new DateTimePoint(weekStart, value));
+                    // Use a fixed spacing approach rather than actual calendar weeks
+                    var weekPosition = baseDate.AddDays((week - 1) * 6); // 6-day spacing for better distribution
+                    var value = dataByWeek.GetValueOrDefault(week, 0); // Use 0 if no data for this week
+                    _values.Add(new DateTimePoint(weekPosition, value));
                 }
 
-                // Configure X-axis for actual weeks in month
-                XAxes[0].Labeler = value =>
+                // Configure Y-axis for exactly 5 evenly distributed weeks
+                YAxes[0].Labeler = value =>
                 {
                     var tickTime = new DateTime((long)value);
-
-                    // Find the closest data point to this tick
-                    var closestPoint = _values
-                        .OrderBy(v => Math.Abs((v.DateTime - tickTime).TotalDays))
-                        .FirstOrDefault();
-
-                    // Only show label if this tick is very close to one of our actual data points
-                    if (
-                        closestPoint != null
-                        && Math.Abs((closestPoint.DateTime - tickTime).TotalDays) < 3.5
-                    )
+                    
+                    // Find which week this tick represents based on position
+                    for (int i = 0; i < _values.Count; i++)
                     {
-                        var weekIndex = _values.ToList().IndexOf(closestPoint) + 1;
-                        return $"Week {weekIndex}";
+                        var dataPoint = _values[i];
+                        if (Math.Abs((dataPoint.DateTime - tickTime).TotalDays) < 3)
+                        {
+                            return $"Week {i + 1}";
+                        }
                     }
-
+                    
                     return string.Empty; // Hide extra labels
                 };
+                
+                // Set limits to evenly distribute the 5 weeks across the Y-axis
+                var startLimit = baseDate.AddDays(-3); // Week 1 start with padding
+                var endLimit = baseDate.AddDays(4 * 6 + 3); // Week 5 end with padding
+                
+                YAxes[0].MinLimit = startLimit.Ticks;
+                YAxes[0].MaxLimit = endLimit.Ticks;
+                YAxes[0].UnitWidth = TimeSpan.FromDays(6).Ticks; // Use 6-day intervals for even spacing
 
-                // Set limits with sufficient padding to show all bars fully
-                var firstWeekStart = startOfMonth;
-                var lastWeekStart = startOfMonth.AddDays((weeksInMonth - 1) * 7);
-
-                XAxes[0].MinLimit = firstWeekStart.AddDays(-12).Ticks; // More padding on left
-                XAxes[0].MaxLimit = lastWeekStart.AddDays(12).Ticks; // More padding on right
-                XAxes[0].UnitWidth = TimeSpan.FromDays(7).Ticks;
+                // Configure X-axis to show values (for horizontal bars, X-axis shows values)
+                XAxes[0].Labeler = value => ((int)value).ToString();
             }
 
-            // Configure Y-axis based on actual data values
-            var maxY = _values.Select(v => v.Value ?? 0).DefaultIfEmpty(0).Max();
-            var padding = maxY * 0.2;
+            // Configure value axis based on actual data and series type
+            var maxValue = _values.Select(v => v.Value ?? 0).DefaultIfEmpty(0).Max();
+            var padding = maxValue * 0.2;
             if (padding == 0)
                 padding = 10;
 
-            var maxLimit = Math.Ceiling(maxY + padding);
-            YAxes[0].MinLimit = 0;
-            YAxes[0].MaxLimit = maxLimit;
+            var maxLimit = Math.Ceiling(maxValue + padding);
 
-            // Set step size to get approximately 5-6 labels
-            var step = maxLimit / 5;
-            if (step > 0)
+            if (timeUnit == "hour")
             {
-                YAxes[0].UnitWidth = step;
+                // Line series: values on Y-axis
+                YAxes[0].MinLimit = 0;
+                YAxes[0].MaxLimit = maxLimit;
+                var step = maxLimit / 5;
+                if (step > 0)
+                {
+                    YAxes[0].UnitWidth = step;
+                }
+            }
+            else
+            {
+                // Row series: values on X-axis (horizontal bars)
+                XAxes[0].MinLimit = 0;
+                XAxes[0].MaxLimit = maxLimit;
+                var step = maxLimit / 5;
+                if (step > 0)
+                {
+                    XAxes[0].UnitWidth = step;
+                }
             }
         }
     }

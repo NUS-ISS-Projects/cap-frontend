@@ -10,6 +10,7 @@ using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+using LiveChartsCore.SkiaSharpView.Painting.Effects;
 using SkiaSharp;
 
 namespace DISTestKit.ViewModel
@@ -81,11 +82,13 @@ namespace DISTestKit.ViewModel
         public ICommand TodayCommand { get; }
         public ICommand WeekCommand { get; }
         public ICommand MonthCommand { get; }
+        public ICommand YearCommand { get; }
 
         // Chat functionality
         public ObservableCollection<ChatMessage> ChatMessages { get; }
         public ObservableCollection<string> TimePeriods { get; }
         public ICommand SendMessageCommand { get; }
+        public ICommand ClearChatCommand { get; }
 
         private string _chatInputText = "";
         public string ChatInputText
@@ -123,11 +126,13 @@ namespace DISTestKit.ViewModel
             ChatMessages = new ObservableCollection<ChatMessage>();
             TimePeriods = new ObservableCollection<string> { "24 hours", "week", "month" };
             SendMessageCommand = new RelayCommand(SendMessage);
+            ClearChatCommand = new RelayCommand(ClearChat);
 
             // Initialize commands
             TodayCommand = new RelayCommand(() => SelectedPeriod = Period.Today);
             WeekCommand = new RelayCommand(() => SelectedPeriod = Period.Week);
             MonthCommand = new RelayCommand(() => SelectedPeriod = Period.Month);
+            YearCommand = new RelayCommand(() => SelectedPeriod = Period.Year);
 
             // Set initial chat input preview
             UpdateChatInputPreview();
@@ -136,15 +141,34 @@ namespace DISTestKit.ViewModel
             _selectedDate = DateTime.Today;
 
             // build chart series
-            var vals = new ObservableCollection<DateTimePoint>();
+            var historicalVals = new ObservableCollection<DateTimePoint>();
+            var predictedVals = new ObservableCollection<DateTimePoint>();
             VolumeSeries = new ObservableCollection<ISeries>
             {
                 new LineSeries<DateTimePoint>
                 {
-                    Name = "Volume",
-                    Values = vals,
-                    Stroke = new SolidColorPaint(SKColors.MediumPurple, 2),
-                    Fill = new SolidColorPaint(new SKColor(128, 0, 128, 80)),
+                    Name = "Historical Data",
+                    Values = historicalVals,
+                    Stroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 2),
+                    Fill = null,
+                    GeometryFill = new SolidColorPaint(SKColor.Parse("#5084DD")),
+                    GeometryStroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 1),
+                    GeometrySize = 4,
+                    LineSmoothness = 0.8,
+                },
+                new LineSeries<DateTimePoint>
+                {
+                    Name = "AI Prediction",
+                    Values = predictedVals,
+                    Stroke = new SolidColorPaint(SKColor.Parse("#FF6B35"), 2)
+                    {
+                        PathEffect = new DashEffect(new float[] { 10f, 5f })
+                    },
+                    Fill = null,
+                    GeometryFill = new SolidColorPaint(SKColor.Parse("#FF6B35")),
+                    GeometryStroke = new SolidColorPaint(SKColor.Parse("#FF6B35"), 1),
+                    GeometrySize = 4,
+                    LineSmoothness = 0.8,
                 },
             };
             var now = DateTime.Now;
@@ -159,38 +183,234 @@ namespace DISTestKit.ViewModel
             };
             VolumeYAxes = new[] { new Axis { MinLimit = 0 } };
 
-            // kick off real-time updating
-            // _ = StartRealtimeAsync(vals);
+            // Set initial period to Today and load data after everything is initialized
+            _selectedPeriod = Period.Today;
+            RefreshHistorical();
         }
-
-        // private async Task StartRealtimeAsync(ObservableCollection<DateTimePoint> vals)
-        // {
-        //     while (true)
-        //     {
-        //         var dto = await _svc.GetMetricsAsync();
-        //         var ts = DateTimeOffset
-        //             .FromUnixTimeMilliseconds(dto.LastPduReceivedTimestampMs)
-        //             .LocalDateTime;
-        //         App.Current.Dispatcher.Invoke(() =>
-        //         {
-        //             vals.Add(new DateTimePoint(ts, dto.PdusInLastSixtySeconds));
-        //             if (vals.Count > 60)
-        //                 vals.RemoveAt(0);
-        //             VolumeXAxes[0].MinLimit = vals[0].DateTime.Ticks;
-        //             VolumeXAxes[0].MaxLimit = ts.Ticks;
-        //             TotalVolumeLastMinute = dto.PdusInLastSixtySeconds;
-        //             AverageVolumePerSecond = dto.AveragePduRatePerSecondLastSixtySeconds;
-        //             OnPropertyChanged(nameof(TotalVolumeLastMinute));
-        //             OnPropertyChanged(nameof(AverageVolumePerSecond));
-        //         });
-        //         await Task.Delay(1000);
-        //     }
-        // }
 
         private void RefreshHistorical()
         {
-            // TODO: fetch historical data for SelectedDate+Time → SelectedDate+Time+1h
-            // then repopulate VolumeSeries[0].Values and metrics
+            if (_selectedPeriod == Period.None)
+                return;
+
+            // Clear existing data from both series
+            if (VolumeSeries.Count > 0)
+            {
+                // Clear historical data
+                if (
+                    VolumeSeries[0] is LineSeries<DateTimePoint> historicalSeries
+                    && historicalSeries.Values
+                        is ObservableCollection<DateTimePoint> historicalValues
+                )
+                {
+                    historicalValues.Clear();
+                }
+
+                // Clear prediction data
+                if (
+                    VolumeSeries.Count > 1
+                    && VolumeSeries[1] is LineSeries<DateTimePoint> predictedSeries
+                    && predictedSeries.Values is ObservableCollection<DateTimePoint> predictedValues
+                )
+                {
+                    predictedValues.Clear();
+                }
+            }
+
+            // Configure chart based on selected period
+            ConfigureChartForPeriod();
+
+            // TODO: Fetch and populate data from aggregation service
+            // For now, add sample data points to demonstrate the chart
+            AddSampleDataForPeriod();
+        }
+
+        private void ConfigureChartForPeriod()
+        {
+            if (VolumeXAxes == null || VolumeXAxes.Length == 0)
+                return;
+
+            var now = DateTime.Now;
+
+            switch (_selectedPeriod)
+            {
+                case Period.Today:
+                    // Configure for hourly data over 24 hours
+                    VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("HH:mm");
+                    VolumeXAxes[0].MinLimit = _selectedDate.Ticks;
+                    VolumeXAxes[0].MaxLimit = _selectedDate.AddDays(1).Ticks;
+                    VolumeXAxes[0].UnitWidth = TimeSpan.FromHours(1).Ticks;
+                    break;
+
+                case Period.Week:
+                    // Configure for daily data: 7 days historical + 7 days forecast
+                    var weekStartDate = _selectedDate.AddDays(-6);
+                    var weekEndDate = DateTime.Today.AddDays(6); // Extend to show forecast
+                    VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MM/dd");
+                    VolumeXAxes[0].MinLimit = weekStartDate.AddHours(-12).Ticks;
+                    VolumeXAxes[0].MaxLimit = weekEndDate.AddHours(12).Ticks;
+                    VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(1).Ticks;
+                    break;
+
+                case Period.Month:
+                    // Configure for weekly data over a month
+                    var startOfMonth = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
+                    var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+                    VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MM/dd");
+                    VolumeXAxes[0].MinLimit = startOfMonth.AddDays(-3).Ticks;
+                    VolumeXAxes[0].MaxLimit = endOfMonth.AddDays(3).Ticks;
+                    VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(7).Ticks;
+                    break;
+
+                case Period.Year:
+                    // Configure for monthly data over a year
+                    var startOfYear = new DateTime(_selectedDate.Year, 1, 1);
+                    var endOfYear = new DateTime(_selectedDate.Year, 12, 31);
+                    VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MMM");
+                    VolumeXAxes[0].MinLimit = startOfYear.AddDays(-15).Ticks;
+                    VolumeXAxes[0].MaxLimit = endOfYear.AddDays(15).Ticks;
+                    VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(30).Ticks;
+                    break;
+            }
+        }
+
+        private void AddSampleDataForPeriod()
+        {
+            if (VolumeSeries.Count < 2)
+                return;
+
+            var historicalSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
+            var predictedSeries = VolumeSeries[1] as LineSeries<DateTimePoint>;
+
+            if (
+                historicalSeries?.Values is not ObservableCollection<DateTimePoint> historicalValues
+                || predictedSeries?.Values
+                    is not ObservableCollection<DateTimePoint> predictedValues
+            )
+                return;
+
+            var random = new Random();
+            var now = DateTime.Now;
+
+            switch (_selectedPeriod)
+            {
+                case Period.Today:
+                    // Add historical hourly data (past hours until now)
+                    var currentHour = now.Hour;
+                    for (int hour = 0; hour <= currentHour; hour++)
+                    {
+                        var dateTime = _selectedDate.AddHours(hour);
+                        var value = random.Next(100, 1000);
+                        historicalValues.Add(new DateTimePoint(dateTime, value));
+                    }
+
+                    // Add predicted data (remaining hours of the day)
+                    var lastHistoricalValue = historicalValues.LastOrDefault()?.Value ?? 500;
+                    var lastHistoricalTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate.AddHours(currentHour);
+                    
+                    // Add the connecting point (last historical point as first predicted point)
+                    if (currentHour < 23)
+                    {
+                        predictedValues.Add(new DateTimePoint(lastHistoricalTime, lastHistoricalValue));
+                    }
+                    
+                    for (int hour = currentHour + 1; hour < 24; hour++)
+                    {
+                        var dateTime = _selectedDate.AddHours(hour);
+                        var variation = random.Next(-100, 100);
+                        var value = Math.Max(50, lastHistoricalValue + variation);
+                        predictedValues.Add(new DateTimePoint(dateTime, value));
+                        lastHistoricalValue = value;
+                    }
+                    break;
+
+                case Period.Week:
+                    // Add historical daily data (past days up to today)
+                    var startDate = _selectedDate.AddDays(-6);
+                    
+                    // Historical data: from 6 days ago up to and including today
+                    for (int day = 0; day <= 6; day++)
+                    {
+                        var dateTime = startDate.AddDays(day);
+                        // Only add historical data for dates up to today
+                        if (dateTime.Date <= DateTime.Today)
+                        {
+                            var value = random.Next(2000, 8000);
+                            historicalValues.Add(new DateTimePoint(dateTime, value));
+                        }
+                    }
+
+                    // Add predicted data for future days (next 7 days after today)
+                    var lastWeekValue = historicalValues.LastOrDefault()?.Value ?? 5000;
+                    var lastWeekTime = historicalValues.LastOrDefault()?.DateTime ?? DateTime.Today;
+                    
+                    // Add the connecting point (last historical point as first predicted point)
+                    predictedValues.Add(new DateTimePoint(lastWeekTime, lastWeekValue));
+                    
+                    // Add forecast for next 6 days
+                    for (int day = 1; day <= 6; day++)
+                    {
+                        var dateTime = DateTime.Today.AddDays(day);
+                        var variation = random.Next(-1000, 1000);
+                        var value = Math.Max(1000, lastWeekValue + variation);
+                        predictedValues.Add(new DateTimePoint(dateTime, value));
+                        lastWeekValue = value;
+                    }
+                    break;
+
+                case Period.Month:
+                    // Add historical weekly data and predicted data
+                    var startOfMonth = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
+                    var weeksInMonth = Math.Ceiling(
+                        (
+                            DateTime.DaysInMonth(_selectedDate.Year, _selectedDate.Month)
+                            + (int)startOfMonth.DayOfWeek
+                        ) / 7.0
+                    );
+
+                    var currentWeek = Math.Min(
+                        weeksInMonth - 1,
+                        Math.Floor((_selectedDate.Date - startOfMonth.Date).Days / 7.0)
+                    );
+
+                    // Historical data
+                    for (int week = 0; week <= currentWeek; week++)
+                    {
+                        var dateTime = startOfMonth.AddDays(week * 7);
+                        var value = random.Next(10000, 40000);
+                        historicalValues.Add(new DateTimePoint(dateTime, value));
+                    }
+
+                    // Predicted data
+                    var lastMonthValue = historicalValues.LastOrDefault()?.Value ?? 25000;
+                    var lastMonthTime = historicalValues.LastOrDefault()?.DateTime ?? startOfMonth.AddDays(currentWeek * 7);
+                    
+                    // Add the connecting point (last historical point as first predicted point)
+                    if (currentWeek < weeksInMonth - 1)
+                    {
+                        predictedValues.Add(new DateTimePoint(lastMonthTime, lastMonthValue));
+                    }
+                    
+                    for (int week = (int)currentWeek + 1; week < weeksInMonth; week++)
+                    {
+                        var dateTime = startOfMonth.AddDays(week * 7);
+                        var variation = random.Next(-5000, 5000);
+                        var value = Math.Max(5000, lastMonthValue + variation);
+                        predictedValues.Add(new DateTimePoint(dateTime, value));
+                        lastMonthValue = value;
+                    }
+                    break;
+            }
+
+            // Update Y-axis based on all data
+            var allValues = historicalValues.Concat(predictedValues).ToList();
+            if (allValues.Count > 0 && VolumeYAxes != null && VolumeYAxes.Length > 0)
+            {
+                var maxY = allValues.Max(v => v.Value ?? 0);
+                var padding = maxY * 0.2;
+                VolumeYAxes[0].MinLimit = 0;
+                VolumeYAxes[0].MaxLimit = Math.Ceiling(maxY + padding);
+            }
         }
 
         private void UpdateChatInputPreview()
@@ -220,6 +440,11 @@ namespace DISTestKit.ViewModel
 
             // Reset input to preview text
             UpdateChatInputPreview();
+        }
+
+        private void ClearChat()
+        {
+            ChatMessages.Clear();
         }
 
         private string GenerateAIResponse(string userMessage)

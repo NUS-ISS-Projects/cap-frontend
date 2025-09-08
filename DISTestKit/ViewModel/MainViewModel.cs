@@ -29,6 +29,7 @@ namespace DISTestKit.ViewModel
         Today,
         Week,
         Month,
+        Year,
     }
 
     public class MainViewModel : INotifyPropertyChanged
