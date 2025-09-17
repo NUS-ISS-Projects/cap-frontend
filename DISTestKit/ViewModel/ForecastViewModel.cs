@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -48,7 +49,7 @@ namespace DISTestKit.ViewModel
             {
                 _selectedDate = value;
                 OnPropertyChanged(nameof(SelectedDate));
-                RefreshHistorical();
+                _ = RefreshHistoricalAsync();
             }
         }
 
@@ -60,7 +61,7 @@ namespace DISTestKit.ViewModel
             {
                 _selectedTime = value;
                 OnPropertyChanged(nameof(SelectedTime));
-                RefreshHistorical();
+                _ = RefreshHistoricalAsync();
             }
         }
 
@@ -75,7 +76,7 @@ namespace DISTestKit.ViewModel
                     return;
                 _selectedPeriod = value;
                 OnPropertyChanged(nameof(SelectedPeriod));
-                RefreshHistorical();
+                _ = RefreshHistoricalAsync();
             }
         }
 
@@ -117,10 +118,12 @@ namespace DISTestKit.ViewModel
         public bool CanSendMessage => !string.IsNullOrWhiteSpace(ChatInputText);
 
         private readonly RealTimeMetricsService _svc;
+        private readonly AggregationService _aggregationSvc;
 
         public ForecastViewModel(RealTimeMetricsService svc)
         {
             _svc = svc;
+            _aggregationSvc = new AggregationService("http://localhost:32080/api/");
 
             // Initialize chat functionality
             ChatMessages = new ObservableCollection<ChatMessage>();
@@ -162,7 +165,7 @@ namespace DISTestKit.ViewModel
                     Values = predictedVals,
                     Stroke = new SolidColorPaint(SKColor.Parse("#FF6B35"), 2)
                     {
-                        PathEffect = new DashEffect(new float[] { 10f, 5f })
+                        PathEffect = new DashEffect(new float[] { 10f, 5f }),
                     },
                     Fill = null,
                     GeometryFill = new SolidColorPaint(SKColor.Parse("#FF6B35")),
@@ -181,14 +184,23 @@ namespace DISTestKit.ViewModel
                     MaxLimit = now.Ticks,
                 },
             };
-            VolumeYAxes = new[] { new Axis { MinLimit = 0 } };
+            VolumeYAxes = new[]
+            {
+                new Axis
+                {
+                    MinLimit = 0,
+                    MaxLimit = 1000,
+                    Labeler = value => ((int)value).ToString(),
+                    UnitWidth = 200,
+                },
+            };
 
             // Set initial period to Today and load data after everything is initialized
             _selectedPeriod = Period.Today;
-            RefreshHistorical();
+            _ = RefreshHistoricalAsync();
         }
 
-        private void RefreshHistorical()
+        private async Task RefreshHistoricalAsync()
         {
             if (_selectedPeriod == Period.None)
                 return;
@@ -220,9 +232,11 @@ namespace DISTestKit.ViewModel
             // Configure chart based on selected period
             ConfigureChartForPeriod();
 
-            // TODO: Fetch and populate data from aggregation service
-            // For now, add sample data points to demonstrate the chart
-            AddSampleDataForPeriod();
+            // Fetch actual data from API
+            await LoadHistoricalDataFromAPI();
+
+            // Add prediction data (still using sample data for now)
+            AddPredictionData();
         }
 
         private void ConfigureChartForPeriod()
@@ -274,7 +288,74 @@ namespace DISTestKit.ViewModel
             }
         }
 
-        private void AddSampleDataForPeriod()
+        private async Task LoadHistoricalDataFromAPI()
+        {
+            if (VolumeSeries.Count < 1)
+                return;
+
+            var historicalSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
+            if (
+                historicalSeries?.Values is not ObservableCollection<DateTimePoint> historicalValues
+            )
+                return;
+
+            try
+            {
+                var agg = await _aggregationSvc.GetAggregateAsync(
+                    today: _selectedPeriod == Period.Today,
+                    week: _selectedPeriod == Period.Week,
+                    month: _selectedPeriod == Period.Month,
+                    startDate: _selectedPeriod == Period.Month ? _selectedDate : null
+                );
+
+                var weekIndex = 0;
+                foreach (var bucket in agg.Buckets)
+                {
+                    DateTime when = agg.TimeUnit switch
+                    {
+                        "hour" => _selectedDate.AddHours(bucket.Hour ?? 0),
+                        "day" => DateTime.Parse(bucket.Date!),
+                        "week" => GetWeekStartDate(bucket.Week, agg.Start, weekIndex),
+                        _ => _selectedDate,
+                    };
+
+                    if (agg.TimeUnit == "week")
+                        weekIndex++;
+
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        historicalValues.Add(new DateTimePoint(when, bucket.TotalPackets));
+                    });
+                }
+
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    UpdateYAxisBasedOnData();
+                });
+            }
+            catch { }
+        }
+
+        private static DateTime GetWeekStartDate(string? weekString, string apiStart, int weekIndex)
+        {
+            if (
+                !string.IsNullOrEmpty(weekString)
+                && weekString.Contains("(")
+                && weekString.Contains(" to ")
+            )
+            {
+                var start = weekString.Split('(')[1].Split(' ')[0];
+                if (DateTime.TryParse(start, out DateTime weekStart))
+                    return weekStart;
+            }
+
+            if (DateTime.TryParse(apiStart, out DateTime apiStartDate))
+                return apiStartDate.AddDays(weekIndex * 7);
+
+            return DateTime.Today.AddDays(weekIndex * 7);
+        }
+
+        private void AddPredictionData()
         {
             if (VolumeSeries.Count < 2)
                 return;
@@ -292,29 +373,27 @@ namespace DISTestKit.ViewModel
             var random = new Random();
             var now = DateTime.Now;
 
+            var futurePoints = historicalValues.Where(p => p.DateTime > now).ToList();
+            foreach (var futurePoint in futurePoints)
+            {
+                historicalValues.Remove(futurePoint);
+                predictedValues.Add(new DateTimePoint(futurePoint.DateTime, futurePoint.Value));
+            }
+
             switch (_selectedPeriod)
             {
                 case Period.Today:
-                    // Add historical hourly data (past hours until now)
-                    var currentHour = now.Hour;
-                    for (int hour = 0; hour <= currentHour; hour++)
+                    var lastHistoricalValue = historicalValues.LastOrDefault()?.Value ?? 500;
+                    var lastHistoricalTime = historicalValues.LastOrDefault()?.DateTime ?? now;
+
+                    if (now.Hour < 23)
                     {
-                        var dateTime = _selectedDate.AddHours(hour);
-                        var value = random.Next(100, 1000);
-                        historicalValues.Add(new DateTimePoint(dateTime, value));
+                        predictedValues.Add(
+                            new DateTimePoint(lastHistoricalTime, lastHistoricalValue)
+                        );
                     }
 
-                    // Add predicted data (remaining hours of the day)
-                    var lastHistoricalValue = historicalValues.LastOrDefault()?.Value ?? 500;
-                    var lastHistoricalTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate.AddHours(currentHour);
-                    
-                    // Add the connecting point (last historical point as first predicted point)
-                    if (currentHour < 23)
-                    {
-                        predictedValues.Add(new DateTimePoint(lastHistoricalTime, lastHistoricalValue));
-                    }
-                    
-                    for (int hour = currentHour + 1; hour < 24; hour++)
+                    for (int hour = now.Hour + 1; hour < 24; hour++)
                     {
                         var dateTime = _selectedDate.AddHours(hour);
                         var variation = random.Next(-100, 100);
@@ -325,29 +404,11 @@ namespace DISTestKit.ViewModel
                     break;
 
                 case Period.Week:
-                    // Add historical daily data (past days up to today)
-                    var startDate = _selectedDate.AddDays(-6);
-                    
-                    // Historical data: from 6 days ago up to and including today
-                    for (int day = 0; day <= 6; day++)
-                    {
-                        var dateTime = startDate.AddDays(day);
-                        // Only add historical data for dates up to today
-                        if (dateTime.Date <= DateTime.Today)
-                        {
-                            var value = random.Next(2000, 8000);
-                            historicalValues.Add(new DateTimePoint(dateTime, value));
-                        }
-                    }
-
-                    // Add predicted data for future days (next 7 days after today)
                     var lastWeekValue = historicalValues.LastOrDefault()?.Value ?? 5000;
                     var lastWeekTime = historicalValues.LastOrDefault()?.DateTime ?? DateTime.Today;
-                    
-                    // Add the connecting point (last historical point as first predicted point)
+
                     predictedValues.Add(new DateTimePoint(lastWeekTime, lastWeekValue));
-                    
-                    // Add forecast for next 6 days
+
                     for (int day = 1; day <= 6; day++)
                     {
                         var dateTime = DateTime.Today.AddDays(day);
@@ -359,7 +420,10 @@ namespace DISTestKit.ViewModel
                     break;
 
                 case Period.Month:
-                    // Add historical weekly data and predicted data
+                    var lastMonthValue = historicalValues.LastOrDefault()?.Value ?? 25000;
+                    var lastMonthTime =
+                        historicalValues.LastOrDefault()?.DateTime ?? DateTime.Today;
+
                     var startOfMonth = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
                     var weeksInMonth = Math.Ceiling(
                         (
@@ -368,29 +432,15 @@ namespace DISTestKit.ViewModel
                         ) / 7.0
                     );
 
-                    var currentWeek = Math.Min(
-                        weeksInMonth - 1,
-                        Math.Floor((_selectedDate.Date - startOfMonth.Date).Days / 7.0)
+                    var currentWeek = Math.Floor(
+                        (DateTime.Today.Date - startOfMonth.Date).Days / 7.0
                     );
 
-                    // Historical data
-                    for (int week = 0; week <= currentWeek; week++)
-                    {
-                        var dateTime = startOfMonth.AddDays(week * 7);
-                        var value = random.Next(10000, 40000);
-                        historicalValues.Add(new DateTimePoint(dateTime, value));
-                    }
-
-                    // Predicted data
-                    var lastMonthValue = historicalValues.LastOrDefault()?.Value ?? 25000;
-                    var lastMonthTime = historicalValues.LastOrDefault()?.DateTime ?? startOfMonth.AddDays(currentWeek * 7);
-                    
-                    // Add the connecting point (last historical point as first predicted point)
                     if (currentWeek < weeksInMonth - 1)
                     {
                         predictedValues.Add(new DateTimePoint(lastMonthTime, lastMonthValue));
                     }
-                    
+
                     for (int week = (int)currentWeek + 1; week < weeksInMonth; week++)
                     {
                         var dateTime = startOfMonth.AddDays(week * 7);
@@ -402,14 +452,40 @@ namespace DISTestKit.ViewModel
                     break;
             }
 
-            // Update Y-axis based on all data
+            UpdateYAxisBasedOnData();
+        }
+
+        private void UpdateYAxisBasedOnData()
+        {
+            if (VolumeSeries.Count < 2 || VolumeYAxes == null || VolumeYAxes.Length == 0)
+                return;
+
+            var historicalSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
+            var predictedSeries = VolumeSeries[1] as LineSeries<DateTimePoint>;
+
+            var historicalValues =
+                historicalSeries?.Values as ObservableCollection<DateTimePoint>
+                ?? new ObservableCollection<DateTimePoint>();
+            var predictedValues =
+                predictedSeries?.Values as ObservableCollection<DateTimePoint>
+                ?? new ObservableCollection<DateTimePoint>();
+
             var allValues = historicalValues.Concat(predictedValues).ToList();
-            if (allValues.Count > 0 && VolumeYAxes != null && VolumeYAxes.Length > 0)
+            if (allValues.Count > 0)
             {
                 var maxY = allValues.Max(v => v.Value ?? 0);
                 var padding = maxY * 0.2;
+                if (padding == 0)
+                    padding = 100;
+
                 VolumeYAxes[0].MinLimit = 0;
                 VolumeYAxes[0].MaxLimit = Math.Ceiling(maxY + padding);
+
+                var stepSize = Math.Ceiling((maxY + padding) / 5);
+                if (stepSize > 0)
+                {
+                    VolumeYAxes[0].UnitWidth = stepSize;
+                }
             }
         }
 

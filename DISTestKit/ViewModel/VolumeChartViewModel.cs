@@ -36,7 +36,8 @@ namespace DISTestKit.ViewModel
             XAxes[0].MaxLimit = now.Ticks;
             XAxes[0].UnitWidth = TimeSpan.FromMinutes(1).Ticks;
 
-            // Reset Y-axis to default real-time configuration
+            // Reset Y-axis to default real-time configuration (for LineSeries, Y-axis shows values)
+            YAxes[0].Labeler = value => ((int)value).ToString();
             YAxes[0].MinLimit = 0;
             YAxes[0].MaxLimit = 3000;
             YAxes[0].UnitWidth = double.NaN; // Let LiveCharts auto-calculate step size
@@ -52,7 +53,7 @@ namespace DISTestKit.ViewModel
             {
                 new LineSeries<DateTimePoint>
                 {
-                    Name = "Volume",
+                    Name = "Traffic Volume (packets)",
                     Values = _values,
                     Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
                     Fill = null,
@@ -95,7 +96,7 @@ namespace DISTestKit.ViewModel
             Series.Add(
                 new LineSeries<DateTimePoint>
                 {
-                    Name = "Volume",
+                    Name = "Traffic Volume (packets)",
                     Values = _values,
                     Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
                     Fill = null,
@@ -115,7 +116,7 @@ namespace DISTestKit.ViewModel
             Series.Add(
                 new RowSeries<DateTimePoint>
                 {
-                    Name = "Volume",
+                    Name = "Traffic Volume (packets)",
                     Values = _values,
                     Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
                     Fill = new SolidColorPaint(new SKColor(80, 132, 221, 80)),
@@ -125,6 +126,7 @@ namespace DISTestKit.ViewModel
                             point.Value ?? 0,
                             point.DateTime.Ticks
                         ),
+                    IsHoverable = false,
                 }
             );
         }
@@ -272,7 +274,7 @@ namespace DISTestKit.ViewModel
                 YAxes[0].Labeler = value =>
                 {
                     var tickTime = new DateTime((long)value);
-                    
+
                     // Find which week this tick represents based on position
                     for (int i = 0; i < _values.Count; i++)
                     {
@@ -282,14 +284,14 @@ namespace DISTestKit.ViewModel
                             return $"Week {i + 1}";
                         }
                     }
-                    
+
                     return string.Empty; // Hide extra labels
                 };
-                
+
                 // Set limits to evenly distribute the 5 weeks across the Y-axis
                 var startLimit = baseDate.AddDays(-3); // Week 1 start with padding
                 var endLimit = baseDate.AddDays(4 * 6 + 3); // Week 5 end with padding
-                
+
                 YAxes[0].MinLimit = startLimit.Ticks;
                 YAxes[0].MaxLimit = endLimit.Ticks;
                 YAxes[0].UnitWidth = TimeSpan.FromDays(6).Ticks; // Use 6-day intervals for even spacing

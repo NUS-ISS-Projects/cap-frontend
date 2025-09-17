@@ -159,6 +159,8 @@ namespace DISTestKit.ViewModel
             TodayCommand = new RelayCommand(() =>
             {
                 SelectedPeriod = Period.Today;
+                IsPlaying = false; // Ensure we're in paused mode for aggregated data
+                VolumeVm.Clear(); // Clear data first
                 _ = LoadOnceAsync();
             });
             WeekCommand = new RelayCommand(() =>
