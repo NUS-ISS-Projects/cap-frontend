@@ -120,23 +120,32 @@ namespace DISTestKit.ViewModel
         private void SwitchToRowSeries()
         {
             // Force a hard swap so the chart re-templates from line -> bar reliably
-            Series = new ObservableCollection<ISeries>
+            var row = new RowSeries<DateTimePoint>
             {
-                new RowSeries<DateTimePoint>
-                {
-                    Name = "Traffic Volume (packets)",
-                    Values = _values,
-                    Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
-                    Fill = new SolidColorPaint(new SKColor(80, 132, 221, 80)),
-                    // For horizontal bars, map X as value (count) and Y as time (ticks)
-                    Mapping = static (point, index) =>
-                        new LiveChartsCore.Kernel.Coordinate(
-                            point.Value ?? 0,
-                            point.DateTime.Ticks
-                        ),
-                    IsHoverable = false,
-                },
+                Name = "Traffic Volume (packets)",
+                Values = _values,
+                Stroke = new SolidColorPaint(new SKColor(80, 132, 221), 2),
+                Fill = new SolidColorPaint(new SKColor(80, 132, 221, 80)),
+                // For horizontal bars, map X as value (count) and Y as time (ticks)
+                Mapping = static (point, index) =>
+                    new LiveChartsCore.Kernel.Coordinate(
+                        point.Value ?? 0,
+                        point.DateTime.Ticks
+                    ),
             };
+            // Default tooltip: header shows Y (date) and line text shows X (count)
+            TrySetToolTipFormatter(row, p => $"{p.Coordinate.PrimaryValue:N0}");
+            TrySetXYToolTipFormatters(
+                row,
+                x => $"{x.Coordinate.PrimaryValue:N0}",
+                y =>
+                {
+                    try { return new DateTime((long)y.Coordinate.SecondaryValue).ToString("MM-dd"); }
+                    catch { return string.Empty; }
+                }
+            );
+
+            Series = new ObservableCollection<ISeries> { row };
             OnPropertyChanged(nameof(Series));
         }
 
@@ -227,6 +236,24 @@ namespace DISTestKit.ViewModel
 
                 // Configure X-axis to show values (for horizontal bars, X-axis shows values)
                 XAxes[0].Labeler = value => ((int)value).ToString();
+
+                // Tooltip: show date (MM-dd) + total volume, and header as date
+                if (Series.Count > 0 && Series[0] is RowSeries<DateTimePoint> rsDay)
+                {
+                    TrySetToolTipFormatter(
+                        rsDay,
+                        p =>
+                        {
+                            var dt = new DateTime((long)p.Coordinate.SecondaryValue);
+                            return $"{dt:MM-dd}: {p.Coordinate.PrimaryValue:N0}";
+                        }
+                    );
+                    TrySetXYToolTipFormatters(
+                        rsDay,
+                        x => $"{x.Coordinate.PrimaryValue:N0}",
+                        y => new DateTime((long)y.Coordinate.SecondaryValue).ToString("MM-dd")
+                    );
+                }
             }
             else if (timeUnit == "hour")
             {
@@ -312,6 +339,48 @@ namespace DISTestKit.ViewModel
 
                 // Configure X-axis to show values (for horizontal bars, X-axis shows values)
                 XAxes[0].Labeler = value => ((int)value).ToString();
+
+                // Tooltip: show Week N + total volume, and header as Week N
+                if (Series.Count > 0 && Series[0] is RowSeries<DateTimePoint> rsWeek)
+                {
+                    TrySetToolTipFormatter(
+                        rsWeek,
+                        p =>
+                        {
+                            // Find the closest week index to the hovered point
+                            var tickTime = new DateTime((long)p.Coordinate.SecondaryValue);
+                            var idx = -1;
+                            var minDiff = double.MaxValue;
+                            for (int i = 0; i < _values.Count; i++)
+                            {
+                                var diff = Math.Abs((_values[i].DateTime - tickTime).TotalDays);
+                                if (diff < minDiff)
+                                {
+                                    minDiff = diff;
+                                    idx = i;
+                                }
+                            }
+                            var label = idx >= 0 ? $"Week {idx + 1}" : "Week";
+                            return $"{label}: {p.Coordinate.PrimaryValue:N0}";
+                        }
+                    );
+                    TrySetXYToolTipFormatters(
+                        rsWeek,
+                        x => $"{x.Coordinate.PrimaryValue:N0}",
+                        y =>
+                        {
+                            var tickTime = new DateTime((long)y.Coordinate.SecondaryValue);
+                            var idx = -1;
+                            var minDiff = double.MaxValue;
+                            for (int i = 0; i < _values.Count; i++)
+                            {
+                                var diff = Math.Abs((_values[i].DateTime - tickTime).TotalDays);
+                                if (diff < minDiff) { minDiff = diff; idx = i; }
+                            }
+                            return idx >= 0 ? $"Week {idx + 1}" : "Week";
+                        }
+                    );
+                }
             }
 
             // Configure value axis based on actual data and series type
@@ -350,5 +419,67 @@ namespace DISTestKit.ViewModel
 
         private void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+
+        private static void TrySetToolTipFormatter(
+            ISeries series,
+            Func<LiveChartsCore.Kernel.ChartPoint, string> formatter
+        )
+        {
+            try
+            {
+                var t = series.GetType();
+                var prop = t.GetProperty("ToolTipLabelFormatter")
+                           ?? t.GetProperty("TooltipLabelFormatter");
+                if (prop?.SetMethod != null)
+                {
+                    prop.SetValue(series, formatter);
+                    return;
+                }
+
+                // try via interface
+                var iface = typeof(ISeries);
+                var ip = iface.GetProperty("ToolTipLabelFormatter")
+                          ?? iface.GetProperty("TooltipLabelFormatter");
+                var set = ip?.SetMethod;
+                if (set != null)
+                {
+                    set.Invoke(series, new object[] { formatter });
+                }
+            }
+            catch
+            {
+                // ignore — tooltip stays default
+            }
+        }
+
+        private static void TrySetXYToolTipFormatters(
+            ISeries series,
+            Func<LiveChartsCore.Kernel.ChartPoint, string> xFormatter,
+            Func<LiveChartsCore.Kernel.ChartPoint, string> yFormatter
+        )
+        {
+            try
+            {
+                var t = series.GetType();
+                var xp = t.GetProperty("XToolTipLabelFormatter");
+                var yp = t.GetProperty("YToolTipLabelFormatter");
+                xp?.SetValue(series, xFormatter);
+                yp?.SetValue(series, yFormatter);
+
+                if (xp == null || yp == null)
+                {
+                    // try on interface
+                    var iface = typeof(ISeries);
+                    xp = iface.GetProperty("XToolTipLabelFormatter");
+                    yp = iface.GetProperty("YToolTipLabelFormatter");
+                    xp?.SetValue(series, xFormatter);
+                    yp?.SetValue(series, yFormatter);
+                }
+            }
+            catch
+            {
+                // ignore — leave defaults
+            }
+        }
     }
 }
