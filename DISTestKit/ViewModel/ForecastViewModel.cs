@@ -158,6 +158,11 @@ namespace DISTestKit.ViewModel
                     GeometryStroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 1),
                     GeometrySize = 4,
                     LineSmoothness = 0.8,
+                    Mapping = static (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(
+                            point.DateTime.Ticks,
+                            point.Value ?? 0
+                        ),
                 },
                 new LineSeries<DateTimePoint>
                 {
@@ -172,6 +177,11 @@ namespace DISTestKit.ViewModel
                     GeometryStroke = new SolidColorPaint(SKColor.Parse("#FF6B35"), 1),
                     GeometrySize = 4,
                     LineSmoothness = 0.8,
+                    Mapping = static (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(
+                            point.DateTime.Ticks,
+                            point.Value ?? 0
+                        ),
                 },
             };
             var now = DateTime.Now;
@@ -259,10 +269,10 @@ namespace DISTestKit.ViewModel
                 case Period.Week:
                     // Configure for daily data: 7 days historical + 7 days forecast
                     var weekStartDate = _selectedDate.AddDays(-6);
-                    var weekEndDate = DateTime.Today.AddDays(6); // Extend to show forecast
+                    var weekEndDate = _selectedDate.AddDays(6); // Extend to show forecast
                     VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MM/dd");
-                    VolumeXAxes[0].MinLimit = weekStartDate.AddHours(-12).Ticks;
-                    VolumeXAxes[0].MaxLimit = weekEndDate.AddHours(12).Ticks;
+                    VolumeXAxes[0].MinLimit = weekStartDate.Ticks;
+                    VolumeXAxes[0].MaxLimit = weekEndDate.AddDays(1).Ticks;
                     VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(1).Ticks;
                     break;
 
@@ -270,9 +280,19 @@ namespace DISTestKit.ViewModel
                     // Configure for weekly data over a month
                     var startOfMonth = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
                     var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
-                    VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MM/dd");
+                    // Extend chart to show forecast data beyond current month
+                    var chartEndDate = endOfMonth.AddMonths(1);
+
+                    // For month view, we'll use week numbers as labels
+                    VolumeXAxes[0].Labeler = v =>
+                    {
+                        var date = new DateTime((long)v);
+                        var weekStart = GetWeekStart(startOfMonth);
+                        var weekNumber = ((date - weekStart).Days / 7) + 1;
+                        return $"Week {weekNumber}";
+                    };
                     VolumeXAxes[0].MinLimit = startOfMonth.AddDays(-3).Ticks;
-                    VolumeXAxes[0].MaxLimit = endOfMonth.AddDays(3).Ticks;
+                    VolumeXAxes[0].MaxLimit = chartEndDate.Ticks;
                     VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(7).Ticks;
                     break;
 
@@ -301,11 +321,25 @@ namespace DISTestKit.ViewModel
 
             try
             {
+                DateTime? apiStartDate = null;
+
+                if (_selectedPeriod == Period.Week)
+                {
+                    // For week view, backend expects the end day of the 7‑day window as startDate
+                    // e.g. startDate=2025-09-21 returns buckets from 2025-09-15..2025-09-21
+                    apiStartDate = _selectedDate.Date;
+                }
+                else if (_selectedPeriod == Period.Month)
+                {
+                    // For month view, use the first day of the selected month
+                    apiStartDate = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
+                }
+
                 var agg = await _aggregationSvc.GetAggregateAsync(
                     today: _selectedPeriod == Period.Today,
                     week: _selectedPeriod == Period.Week,
                     month: _selectedPeriod == Period.Month,
-                    startDate: _selectedPeriod == Period.Month ? _selectedDate : null
+                    startDate: apiStartDate
                 );
 
                 var weekIndex = 0;
@@ -322,6 +356,8 @@ namespace DISTestKit.ViewModel
                     if (agg.TimeUnit == "week")
                         weekIndex++;
 
+                    // Only add points with actual data (TotalPackets > 0) or if it's not a week view
+                    // For week view, we want to show all data points to see the timeline properly
                     App.Current.Dispatcher.Invoke(() =>
                     {
                         historicalValues.Add(new DateTimePoint(when, bucket.TotalPackets));
@@ -330,6 +366,22 @@ namespace DISTestKit.ViewModel
 
                 App.Current.Dispatcher.Invoke(() =>
                 {
+                    // Align X axis to API range and include forecast horizon when on week view
+                    if (_selectedPeriod == Period.Week && VolumeXAxes?.Length > 0)
+                    {
+                        if (
+                            DateTime.TryParse(agg.Start, out var aggStart)
+                            && DateTime.TryParse(agg.End, out var aggEnd)
+                        )
+                        {
+                            var forecastEnd = _selectedDate.AddDays(6);
+                            VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MM/dd");
+                            VolumeXAxes[0].MinLimit = aggStart.AddHours(-12).Ticks;
+                            VolumeXAxes[0].MaxLimit = forecastEnd.AddHours(12).Ticks;
+                            VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(1).Ticks;
+                        }
+                    }
+
                     UpdateYAxisBasedOnData();
                 });
             }
@@ -338,21 +390,33 @@ namespace DISTestKit.ViewModel
 
         private static DateTime GetWeekStartDate(string? weekString, string apiStart, int weekIndex)
         {
-            if (
-                !string.IsNullOrEmpty(weekString)
-                && weekString.Contains("(")
-                && weekString.Contains(" to ")
-            )
+            // Parse week string format: "Week 1 (2025-09-21 to 2025-09-27)"
+            if (!string.IsNullOrEmpty(weekString))
             {
-                var start = weekString.Split('(')[1].Split(' ')[0];
-                if (DateTime.TryParse(start, out DateTime weekStart))
-                    return weekStart;
+                var openParen = weekString.IndexOf('(');
+                var toIndex = weekString.IndexOf(" to ");
+
+                if (openParen > 0 && toIndex > openParen)
+                {
+                    var startDateStr = weekString.Substring(openParen + 1, toIndex - openParen - 1);
+                    if (DateTime.TryParse(startDateStr, out DateTime weekStart))
+                        return weekStart;
+                }
             }
 
+            // Fallback to calculating from API start date
             if (DateTime.TryParse(apiStart, out DateTime apiStartDate))
                 return apiStartDate.AddDays(weekIndex * 7);
 
             return DateTime.Today.AddDays(weekIndex * 7);
+        }
+
+        private static DateTime GetWeekStart(DateTime date)
+        {
+            // Get the start of the week (Monday)
+            var dayOfWeek = (int)date.DayOfWeek;
+            var daysToSubtract = dayOfWeek == 0 ? 6 : dayOfWeek - 1; // Handle Sunday as 7th day
+            return date.Date.AddDays(-daysToSubtract);
         }
 
         private void AddPredictionData()
@@ -373,6 +437,7 @@ namespace DISTestKit.ViewModel
             var random = new Random();
             var now = DateTime.Now;
 
+            // Move any future points from historical to prediction series
             var futurePoints = historicalValues.Where(p => p.DateTime > now).ToList();
             foreach (var futurePoint in futurePoints)
             {
@@ -404,50 +469,84 @@ namespace DISTestKit.ViewModel
                     break;
 
                 case Period.Week:
-                    var lastWeekValue = historicalValues.LastOrDefault()?.Value ?? 5000;
-                    var lastWeekTime = historicalValues.LastOrDefault()?.DateTime ?? DateTime.Today;
+                    // Find the last non-zero value or use the last value if all are zero
+                    var lastNonZeroPoint = historicalValues.LastOrDefault(h => h.Value > 0);
+                    var lastWeekValue =
+                        lastNonZeroPoint?.Value ?? historicalValues.LastOrDefault()?.Value ?? 500;
+                    var lastWeekTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate;
 
-                    predictedValues.Add(new DateTimePoint(lastWeekTime, lastWeekValue));
-
-                    for (int day = 1; day <= 6; day++)
+                    // Add connecting point to ensure smooth transition, but only if we have actual data
+                    if (historicalValues.Count > 0 && lastWeekValue > 0)
                     {
-                        var dateTime = DateTime.Today.AddDays(day);
-                        var variation = random.Next(-1000, 1000);
-                        var value = Math.Max(1000, lastWeekValue + variation);
-                        predictedValues.Add(new DateTimePoint(dateTime, value));
-                        lastWeekValue = value;
+                        predictedValues.Add(new DateTimePoint(lastWeekTime, lastWeekValue));
+                    }
+
+                    // Generate predictions for future days only if we have meaningful historical data
+                    if (lastWeekValue > 0)
+                    {
+                        var startPredictionDate =
+                            DateTime.Today > lastWeekTime.Date
+                                ? DateTime.Today.AddDays(1)
+                                : lastWeekTime.Date.AddDays(1);
+                        var endPredictionDate = _selectedDate.AddDays(6);
+
+                        // Create smoother variations for daily predictions
+                        var dailyVariation = Math.Max(100, (double)lastWeekValue * 0.1); // 10% variation max
+
+                        for (
+                            var date = startPredictionDate;
+                            date <= endPredictionDate;
+                            date = date.AddDays(1)
+                        )
+                        {
+                            var variation = (random.NextDouble() - 0.5) * dailyVariation * 2;
+                            var value = Math.Max(lastWeekValue * 0.1, lastWeekValue + variation);
+                            predictedValues.Add(new DateTimePoint(date, value));
+                            lastWeekValue = value;
+                        }
                     }
                     break;
 
                 case Period.Month:
                     var lastMonthValue = historicalValues.LastOrDefault()?.Value ?? 25000;
-                    var lastMonthTime =
-                        historicalValues.LastOrDefault()?.DateTime ?? DateTime.Today;
+                    var lastMonthTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate;
 
                     var startOfMonth = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
-                    var weeksInMonth = Math.Ceiling(
-                        (
-                            DateTime.DaysInMonth(_selectedDate.Year, _selectedDate.Month)
-                            + (int)startOfMonth.DayOfWeek
-                        ) / 7.0
-                    );
+                    var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
 
-                    var currentWeek = Math.Floor(
-                        (DateTime.Today.Date - startOfMonth.Date).Days / 7.0
-                    );
-
-                    if (currentWeek < weeksInMonth - 1)
+                    // Only add predictions if we have actual data
+                    if (historicalValues.Count > 0 && lastMonthValue > 0)
                     {
+                        // Determine the first week we want to predict.
+                        // Start after the CURRENT week-of-month to avoid drawing an orange point on Week 4.
+                        var nextWeekStart = GetWeekStart(lastMonthTime).AddDays(7); // week after last data
+                        var currentWeekStart = GetWeekStart(_selectedDate);
+                        var firstPredictionWeek =
+                            nextWeekStart <= currentWeekStart
+                                ? currentWeekStart.AddDays(7) // skip current week entirely
+                                : nextWeekStart;
+
+                        var predictionEndDate = endOfMonth.AddMonths(1);
+
+                        // Create smoother variations for weekly predictions
+                        var weeklyVariation = Math.Max(500, (double)lastMonthValue * 0.15); // 15% variation max
+
+                        // add a connecting point at the last actual week (overlaps blue)
                         predictedValues.Add(new DateTimePoint(lastMonthTime, lastMonthValue));
-                    }
+                        // seed the first predicted week at the same value as last actual, but at Week+1
+                        predictedValues.Add(new DateTimePoint(firstPredictionWeek, lastMonthValue));
 
-                    for (int week = (int)currentWeek + 1; week < weeksInMonth; week++)
-                    {
-                        var dateTime = startOfMonth.AddDays(week * 7);
-                        var variation = random.Next(-5000, 5000);
-                        var value = Math.Max(5000, lastMonthValue + variation);
-                        predictedValues.Add(new DateTimePoint(dateTime, value));
-                        lastMonthValue = value;
+                        for (
+                            var weekStart = firstPredictionWeek.AddDays(7);
+                            weekStart <= predictionEndDate;
+                            weekStart = weekStart.AddDays(7)
+                        )
+                        {
+                            var variation = (random.NextDouble() - 0.5) * weeklyVariation * 2;
+                            var value = Math.Max(lastMonthValue * 0.1, lastMonthValue + variation);
+                            predictedValues.Add(new DateTimePoint(weekStart, value));
+                            lastMonthValue = value;
+                        }
                     }
                     break;
             }
@@ -475,8 +574,17 @@ namespace DISTestKit.ViewModel
             {
                 var maxY = allValues.Max(v => v.Value ?? 0);
                 var padding = maxY * 0.2;
-                if (padding == 0)
+
+                // Ensure minimum scale even when all values are zero or very small
+                if (maxY == 0)
+                {
+                    maxY = 1000; // Default max for empty data
+                    padding = 200;
+                }
+                else if (padding < 100)
+                {
                     padding = 100;
+                }
 
                 VolumeYAxes[0].MinLimit = 0;
                 VolumeYAxes[0].MaxLimit = Math.Ceiling(maxY + padding);
@@ -550,10 +658,5 @@ namespace DISTestKit.ViewModel
 
         protected void OnPropertyChanged(string n) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
-
-        public void Dispose()
-        {
-            // Cleanup if needed
-        }
     }
 }
