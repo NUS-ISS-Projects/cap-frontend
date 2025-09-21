@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using LiveChartsCore;
@@ -9,7 +10,7 @@ using SkiaSharp;
 
 namespace DISTestKit.ViewModel
 {
-    public class VolumeChartViewModel
+    public class VolumeChartViewModel : System.ComponentModel.INotifyPropertyChanged
     {
         private readonly ObservableCollection<DateTimePoint> _values = new();
 
@@ -43,7 +44,7 @@ namespace DISTestKit.ViewModel
             YAxes[0].UnitWidth = double.NaN; // Let LiveCharts auto-calculate step size
         }
 
-        public ObservableCollection<ISeries> Series { get; }
+        public ObservableCollection<ISeries> Series { get; private set; }
         public Axis[] XAxes { get; }
         public Axis[] YAxes { get; }
 
@@ -60,6 +61,11 @@ namespace DISTestKit.ViewModel
                     GeometryFill = null,
                     GeometryStroke = null,
                     LineSmoothness = 1,
+                    Mapping = static (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(
+                            point.DateTime.Ticks,
+                            point.Value ?? 0
+                        ),
                 },
             };
 
@@ -89,11 +95,9 @@ namespace DISTestKit.ViewModel
 
         private void SwitchToLineSeries()
         {
-            if (Series.Count > 0 && Series[0] is LineSeries<DateTimePoint>)
-                return;
-
-            Series.Clear();
-            Series.Add(
+            // Force a hard swap so the chart re-templates from bar -> line reliably
+            Series = new ObservableCollection<ISeries>
+            {
                 new LineSeries<DateTimePoint>
                 {
                     Name = "Traffic Volume (packets)",
@@ -103,17 +107,21 @@ namespace DISTestKit.ViewModel
                     GeometryFill = null,
                     GeometryStroke = null,
                     LineSmoothness = 1,
-                }
-            );
+                    Mapping = static (point, index) =>
+                        new LiveChartsCore.Kernel.Coordinate(
+                            point.DateTime.Ticks,
+                            point.Value ?? 0
+                        ),
+                },
+            };
+            OnPropertyChanged(nameof(Series));
         }
 
         private void SwitchToRowSeries()
         {
-            if (Series.Count > 0 && Series[0] is RowSeries<DateTimePoint>)
-                return; // Already row series
-
-            Series.Clear();
-            Series.Add(
+            // Force a hard swap so the chart re-templates from line -> bar reliably
+            Series = new ObservableCollection<ISeries>
+            {
                 new RowSeries<DateTimePoint>
                 {
                     Name = "Traffic Volume (packets)",
@@ -127,8 +135,9 @@ namespace DISTestKit.ViewModel
                             point.DateTime.Ticks
                         ),
                     IsHoverable = false,
-                }
-            );
+                },
+            };
+            OnPropertyChanged(nameof(Series));
         }
 
         public void Update(DateTimePoint point)
@@ -232,6 +241,11 @@ namespace DISTestKit.ViewModel
                 XAxes[0].MinLimit = minDate.AddMinutes(-30).Ticks;
                 XAxes[0].MaxLimit = maxDate.AddMinutes(30).Ticks;
                 XAxes[0].UnitWidth = TimeSpan.FromHours(1).Ticks;
+
+                // Ensure Y axis shows numeric values after coming from bar views
+                YAxes[0].Labeler = value => ((int)value).ToString();
+                YAxes[0].MinLimit = 0;
+                YAxes[0].UnitWidth = double.NaN; // let LiveCharts decide until we set it below
             }
             else if (timeUnit == "week")
             {
@@ -331,5 +345,10 @@ namespace DISTestKit.ViewModel
                 }
             }
         }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged(string name) =>
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
     }
 }
