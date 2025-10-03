@@ -147,7 +147,7 @@ namespace DISTestKit.ViewModel
 
         public MainViewModel()
         {
-            baseURL = "http://localhost:32080/api/";
+            baseURL = "http://34.142.158.178/api/";
             _realTimeMetricsSvc = new RealTimeMetricsService(baseURL);
             _realTimeLogsSvc = new RealTimeLogsService(baseURL);
             _aggregationSvc = new AggregationService(baseURL);

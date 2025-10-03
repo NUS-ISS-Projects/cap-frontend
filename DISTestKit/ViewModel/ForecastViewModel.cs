@@ -119,11 +119,13 @@ namespace DISTestKit.ViewModel
 
         private readonly RealTimeMetricsService _svc;
         private readonly AggregationService _aggregationSvc;
+        private readonly PredictionService _predictionSvc;
 
         public ForecastViewModel(RealTimeMetricsService svc)
         {
             _svc = svc;
-            _aggregationSvc = new AggregationService("http://localhost:32080/api/");
+            _aggregationSvc = new AggregationService("http://34.142.158.178/api/");
+            _predictionSvc = new PredictionService("http://34.142.158.178/api/");
 
             // Initialize chat functionality
             ChatMessages = new ObservableCollection<ChatMessage>();
@@ -245,8 +247,8 @@ namespace DISTestKit.ViewModel
             // Fetch actual data from API
             await LoadHistoricalDataFromAPI();
 
-            // Add prediction data (still using sample data for now)
-            AddPredictionData();
+            // Add prediction data from API
+            await LoadPredictionDataFromAPI();
         }
 
         private void ConfigureChartForPeriod()
@@ -419,7 +421,7 @@ namespace DISTestKit.ViewModel
             return date.Date.AddDays(-daysToSubtract);
         }
 
-        private void AddPredictionData()
+        private async Task LoadPredictionDataFromAPI()
         {
             if (VolumeSeries.Count < 2)
                 return;
@@ -434,124 +436,126 @@ namespace DISTestKit.ViewModel
             )
                 return;
 
-            var random = new Random();
-            var now = DateTime.Now;
-
-            // Move any future points from historical to prediction series
-            var futurePoints = historicalValues.Where(p => p.DateTime > now).ToList();
-            foreach (var futurePoint in futurePoints)
+            try
             {
-                historicalValues.Remove(futurePoint);
-                predictedValues.Add(new DateTimePoint(futurePoint.DateTime, futurePoint.Value));
-            }
+                // Determine the timeUnit and startDate based on selected period
+                string timeUnit;
+                string startDate;
 
-            switch (_selectedPeriod)
-            {
-                case Period.Today:
-                    var lastHistoricalValue = historicalValues.LastOrDefault()?.Value ?? 500;
-                    var lastHistoricalTime = historicalValues.LastOrDefault()?.DateTime ?? now;
+                switch (_selectedPeriod)
+                {
+                    case Period.Today:
+                        timeUnit = "hour";
+                        startDate = _selectedDate.ToString("yyyy-MM-dd");
+                        break;
+                    case Period.Week:
+                        timeUnit = "day";
+                        startDate = _selectedDate.ToString("yyyy-MM-dd");
+                        break;
+                    case Period.Month:
+                        timeUnit = "week";
+                        startDate = new DateTime(_selectedDate.Year, _selectedDate.Month, 1)
+                            .ToString("yyyy-MM-dd");
+                        break;
+                    case Period.Year:
+                        timeUnit = "month";
+                        startDate = new DateTime(_selectedDate.Year, 1, 1).ToString("yyyy-MM-dd");
+                        break;
+                    default:
+                        return;
+                }
 
-                    if (now.Hour < 23)
+                // Call the prediction API
+                var prediction = await _predictionSvc.GetPredictionAsync(timeUnit, startDate);
+
+                // Add connecting point from last historical data
+                var lastHistoricalValue = historicalValues.LastOrDefault()?.Value ?? 0;
+                var lastHistoricalTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate;
+
+                if (historicalValues.Count > 0 && lastHistoricalValue > 0)
+                {
+                    App.Current.Dispatcher.Invoke(() =>
                     {
                         predictedValues.Add(
                             new DateTimePoint(lastHistoricalTime, lastHistoricalValue)
                         );
-                    }
+                    });
+                }
 
-                    for (int hour = now.Hour + 1; hour < 24; hour++)
+                // Parse and add prediction data
+                for (int i = 0; i < prediction.predicted_labels.Count; i++)
+                {
+                    DateTime predictionTime;
+                    double predictionValue = prediction.predicted_values[i];
+
+                    // Parse the label based on time unit
+                    if (timeUnit == "hour")
                     {
-                        var dateTime = _selectedDate.AddHours(hour);
-                        var variation = random.Next(-100, 100);
-                        var value = Math.Max(50, lastHistoricalValue + variation);
-                        predictedValues.Add(new DateTimePoint(dateTime, value));
-                        lastHistoricalValue = value;
-                    }
-                    break;
-
-                case Period.Week:
-                    // Find the last non-zero value or use the last value if all are zero
-                    var lastNonZeroPoint = historicalValues.LastOrDefault(h => h.Value > 0);
-                    var lastWeekValue =
-                        lastNonZeroPoint?.Value ?? historicalValues.LastOrDefault()?.Value ?? 500;
-                    var lastWeekTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate;
-
-                    // Add connecting point to ensure smooth transition, but only if we have actual data
-                    if (historicalValues.Count > 0 && lastWeekValue > 0)
-                    {
-                        predictedValues.Add(new DateTimePoint(lastWeekTime, lastWeekValue));
-                    }
-
-                    // Generate predictions for future days only if we have meaningful historical data
-                    if (lastWeekValue > 0)
-                    {
-                        var startPredictionDate =
-                            DateTime.Today > lastWeekTime.Date
-                                ? DateTime.Today.AddDays(1)
-                                : lastWeekTime.Date.AddDays(1);
-                        var endPredictionDate = _selectedDate.AddDays(6);
-
-                        // Create smoother variations for daily predictions
-                        var dailyVariation = Math.Max(100, (double)lastWeekValue * 0.1); // 10% variation max
-
-                        for (
-                            var date = startPredictionDate;
-                            date <= endPredictionDate;
-                            date = date.AddDays(1)
-                        )
+                        // Label format: "HH:mm"
+                        if (TimeSpan.TryParse(prediction.predicted_labels[i], out var timeOfDay))
                         {
-                            var variation = (random.NextDouble() - 0.5) * dailyVariation * 2;
-                            var value = Math.Max(lastWeekValue * 0.1, lastWeekValue + variation);
-                            predictedValues.Add(new DateTimePoint(date, value));
-                            lastWeekValue = value;
+                            predictionTime = _selectedDate.Date + timeOfDay;
+                        }
+                        else
+                        {
+                            continue; // Skip invalid labels
                         }
                     }
-                    break;
-
-                case Period.Month:
-                    var lastMonthValue = historicalValues.LastOrDefault()?.Value ?? 25000;
-                    var lastMonthTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate;
-
-                    var startOfMonth = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
-                    var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
-
-                    // Only add predictions if we have actual data
-                    if (historicalValues.Count > 0 && lastMonthValue > 0)
+                    else if (timeUnit == "day" || timeUnit == "week")
                     {
-                        // Determine the first week we want to predict.
-                        // Start after the CURRENT week-of-month to avoid drawing an orange point on Week 4.
-                        var nextWeekStart = GetWeekStart(lastMonthTime).AddDays(7); // week after last data
-                        var currentWeekStart = GetWeekStart(_selectedDate);
-                        var firstPredictionWeek =
-                            nextWeekStart <= currentWeekStart
-                                ? currentWeekStart.AddDays(7) // skip current week entirely
-                                : nextWeekStart;
-
-                        var predictionEndDate = endOfMonth.AddMonths(1);
-
-                        // Create smoother variations for weekly predictions
-                        var weeklyVariation = Math.Max(500, (double)lastMonthValue * 0.15); // 15% variation max
-
-                        // add a connecting point at the last actual week (overlaps blue)
-                        predictedValues.Add(new DateTimePoint(lastMonthTime, lastMonthValue));
-                        // seed the first predicted week at the same value as last actual, but at Week+1
-                        predictedValues.Add(new DateTimePoint(firstPredictionWeek, lastMonthValue));
-
-                        for (
-                            var weekStart = firstPredictionWeek.AddDays(7);
-                            weekStart <= predictionEndDate;
-                            weekStart = weekStart.AddDays(7)
+                        // Label format: "yyyy-MM-dd"
+                        if (
+                            DateTime.TryParse(
+                                prediction.predicted_labels[i],
+                                out var parsedDate
+                            )
                         )
                         {
-                            var variation = (random.NextDouble() - 0.5) * weeklyVariation * 2;
-                            var value = Math.Max(lastMonthValue * 0.1, lastMonthValue + variation);
-                            predictedValues.Add(new DateTimePoint(weekStart, value));
-                            lastMonthValue = value;
+                            predictionTime = parsedDate;
+                        }
+                        else
+                        {
+                            continue; // Skip invalid labels
                         }
                     }
-                    break;
+                    else if (timeUnit == "month")
+                    {
+                        // Label format: could be "yyyy-MM" or full date
+                        if (
+                            DateTime.TryParse(
+                                prediction.predicted_labels[i],
+                                out var parsedDate
+                            )
+                        )
+                        {
+                            predictionTime = parsedDate;
+                        }
+                        else
+                        {
+                            continue; // Skip invalid labels
+                        }
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        predictedValues.Add(new DateTimePoint(predictionTime, predictionValue));
+                    });
+                }
+
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    UpdateYAxisBasedOnData();
+                });
             }
-
-            UpdateYAxisBasedOnData();
+            catch (Exception ex)
+            {
+                // Log error or handle gracefully - for now, silently fail
+                System.Diagnostics.Debug.WriteLine($"Prediction API error: {ex.Message}");
+            }
         }
 
         private void UpdateYAxisBasedOnData()
@@ -602,7 +606,7 @@ namespace DISTestKit.ViewModel
             ChatInputText = $"Analyze for me the data for the past {SelectedTimePeriod}";
         }
 
-        private void SendMessage()
+        private async void SendMessage()
         {
             if (string.IsNullOrWhiteSpace(ChatInputText))
                 return;
@@ -612,12 +616,12 @@ namespace DISTestKit.ViewModel
 
             ChatMessages.Add(userMessage);
 
-            // Clear input
+            // Clear input and save the message
             var sentMessage = ChatInputText;
             ChatInputText = "";
 
-            // Simulate AI response (you can replace this with actual AI integration)
-            var aiResponse = GenerateAIResponse(sentMessage);
+            // Get AI response from the API
+            var aiResponse = await GetAIResponseFromAPI(sentMessage);
             var aiMessage = new ChatMessage { Message = aiResponse, IsFromUser = false };
 
             ChatMessages.Add(aiMessage);
@@ -631,26 +635,19 @@ namespace DISTestKit.ViewModel
             ChatMessages.Clear();
         }
 
-        private string GenerateAIResponse(string userMessage)
-        {
-            // This is a placeholder for actual AI integration
-            // You can replace this with calls to your AI service
+        private string _sessionId = Guid.NewGuid().ToString();
 
-            if (userMessage.ToLower().Contains("24 hours"))
+        private async Task<string> GetAIResponseFromAPI(string question)
+        {
+            try
             {
-                return "Based on the data from the past 24 hours, I can see patterns in your DIS network traffic. The volume shows peak activity during business hours with an average of X messages per second. Would you like me to analyze specific aspects like PDU types or network performance?";
+                var response = await _predictionSvc.GetChatResponseAsync(question, _sessionId);
+                return response.answer;
             }
-            else if (userMessage.ToLower().Contains("week"))
+            catch (Exception ex)
             {
-                return "Analyzing the weekly data shows interesting trends. There's typically higher activity on weekdays compared to weekends. The data suggests optimal network performance with occasional spikes during training exercises. Would you like a detailed breakdown of the patterns?";
-            }
-            else if (userMessage.ToLower().Contains("month"))
-            {
-                return "The monthly analysis reveals long-term trends in your DIS system usage. I notice cyclical patterns that align with training schedules and system maintenance windows. Overall network health appears stable with predictable load patterns.";
-            }
-            else
-            {
-                return "I understand you'd like analysis of your DIS data. I can help analyze network performance, identify patterns, predict traffic spikes, and provide insights on system optimization. What specific aspect would you like me to focus on?";
+                // Fallback message if API call fails
+                return $"I apologize, but I'm having trouble connecting to the analysis service right now. Please try again later. (Error: {ex.Message})";
             }
         }
 

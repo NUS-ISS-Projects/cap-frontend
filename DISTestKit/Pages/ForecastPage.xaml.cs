@@ -13,7 +13,7 @@ namespace DISTestKit.Pages
         {
             InitializeComponent();
             var realTimeService = new Services.RealTimeMetricsService(
-                "http://localhost:32080/api/"
+                "http://34.142.158.178/api/"
             );
             DataContext = new ForecastViewModel(realTimeService);
         }

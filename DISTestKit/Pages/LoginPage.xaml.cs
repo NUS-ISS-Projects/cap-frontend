@@ -11,7 +11,7 @@ namespace DISTestKit.Pages
         public LoginPage()
         {
             InitializeComponent();
-            _authService = new AuthenticationService("http://localhost:32080/api/");
+            _authService = new AuthenticationService("http://34.142.158.178/api/");
         }
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)

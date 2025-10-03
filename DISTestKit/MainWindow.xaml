@@ -100,6 +100,17 @@
                             <TextBlock Grid.Column="1" Text="Settings" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
                         </Grid>
                     </Button>
+
+                    <Button x:Name="LogoutButton" Click="LogoutButton_Click" Style="{StaticResource NavigationButton}">
+                        <Grid Width="120" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon Grid.Column="0" Symbol="SignOut20" Width="20" Height="20" Margin="0,0,5,0" Foreground="#5084DD"/>
+                            <TextBlock Grid.Column="1" Text="Logout" FontFamily="Arial" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        </Grid>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>

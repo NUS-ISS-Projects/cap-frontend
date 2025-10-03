@@ -132,6 +132,8 @@ namespace DISTestKit
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
 
+        private void LogoutButton_Click(object sender, RoutedEventArgs e) => Logout();
+
         public void Logout()
         {
             TokenManager.ClearToken();

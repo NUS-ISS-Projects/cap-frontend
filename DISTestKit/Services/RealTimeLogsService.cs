@@ -9,7 +9,7 @@ namespace DISTestKit.Services
 
         public RealTimeLogsService(string baseUrl)
         {
-            _http = new HttpClient { BaseAddress = new Uri(baseUrl) };
+            _http = HttpClientFactory.CreateAuthenticatedClient(baseUrl);
         }
 
         public record PduMessageDto(

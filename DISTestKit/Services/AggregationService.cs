@@ -12,7 +12,7 @@ namespace DISTestKit.Services
 
         public AggregationService(string baseUrl)
         {
-            _http = new HttpClient { BaseAddress = new Uri(baseUrl) };
+            _http = HttpClientFactory.CreateAuthenticatedClient(baseUrl);
         }
 
         public record AggregateResponse(
