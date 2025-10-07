@@ -25,6 +25,16 @@ namespace DISTestKit.Services
             CancellationToken cancellationToken
         )
         {
+            // Get the latest token before sending the request
+            var token = TokenManager.GetToken();
+            if (!string.IsNullOrEmpty(token))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+                    "Bearer",
+                    token
+                );
+            }
+
             var response = await base.SendAsync(request, cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -41,8 +51,9 @@ namespace DISTestKit.Services
 
                 if (shouldHandle)
                 {
-                    // Token has expired, clear it and redirect to login
+                    // Token has expired, clear it and cache, then redirect to login
                     TokenManager.ClearToken();
+                    UserSessionCache.Clear();
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -77,12 +88,8 @@ namespace DISTestKit.Services
             var handler = new TokenExpirationHandler { InnerHandler = new HttpClientHandler() };
             var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
 
-            var token = TokenManager.GetToken();
-            if (!string.IsNullOrEmpty(token))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
+            // Token is now added dynamically in TokenExpirationHandler on each request
+            // This ensures the latest token is always used
 
             return client;
         }

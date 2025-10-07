@@ -1,5 +1,8 @@
+using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using DISTestKit.Model;
 using DISTestKit.Services;
 using LiveChartsCore.Defaults;
 using Timer = System.Timers.Timer;
@@ -57,6 +60,7 @@ namespace DISTestKit.ViewModel
                 _isPlaying = value;
                 OnPropertyChanged(nameof(IsPlaying));
                 OnPropertyChanged(nameof(IsPaused));
+                OnPropertyChanged(nameof(IsDatePickerEnabled));
                 _timer.Enabled = value;
 
                 // When pausing, immediately load the selected range
@@ -79,6 +83,8 @@ namespace DISTestKit.ViewModel
         // ––– Date/Time Selection ––––––––––––––––––––––––––––––––––––––––
 
         private DateTime _selectedDate = DateTime.Now.Date;
+        private bool _isLoadingFromCache = false;
+
         public DateTime SelectedDate
         {
             get => _selectedDate;
@@ -89,7 +95,21 @@ namespace DISTestKit.ViewModel
                 _selectedDate = value;
                 OnPropertyChanged(nameof(SelectedDate));
                 if (IsPaused)
+                {
                     _ = LoadOnceAsync();
+                    // Save session when date is selected by user (not when loading from cache)
+                    if (SelectedPeriod != Period.None && !_isLoadingFromCache)
+                    {
+                        string view = SelectedPeriod switch
+                        {
+                            Period.Today => "day",
+                            Period.Week => "week",
+                            Period.Month => "month",
+                            _ => "dashboard",
+                        };
+                        _ = SaveUserSessionAsync(view);
+                    }
+                }
             }
         }
 
@@ -123,6 +143,7 @@ namespace DISTestKit.ViewModel
                     return;
                 _selectedPeriod = value;
                 OnPropertyChanged(nameof(SelectedPeriod));
+                OnPropertyChanged(nameof(IsDatePickerEnabled));
                 if (value != Period.None)
                 {
                     _isPlaying = false; // Set directly to avoid triggering LoadOnceAsync twice
@@ -132,6 +153,8 @@ namespace DISTestKit.ViewModel
                 }
             }
         }
+
+        public bool IsDatePickerEnabled => SelectedPeriod != Period.None;
         public ICommand TodayCommand { get; }
         public ICommand WeekCommand { get; }
         public ICommand MonthCommand { get; }
@@ -141,9 +164,13 @@ namespace DISTestKit.ViewModel
         private readonly RealTimeLogsService _realTimeLogsSvc;
         private readonly RealTimeMetricsService _realTimeMetricsSvc;
         private readonly AggregationService _aggregationSvc;
+        private readonly UserService _userService;
         private readonly Timer _timer;
         private long _lastTimestamp;
         private int? _previousTotalPackets;
+        private string _userId = "";
+        private string _userName = "";
+        private string _name = "";
 
         public MainViewModel()
         {
@@ -151,6 +178,7 @@ namespace DISTestKit.ViewModel
             _realTimeMetricsSvc = new RealTimeMetricsService(baseURL);
             _realTimeLogsSvc = new RealTimeLogsService(baseURL);
             _aggregationSvc = new AggregationService(baseURL);
+            _userService = new UserService(baseURL);
             VolumeVm = new VolumeChartViewModel();
             ThroughputVm = new ThroughputChartViewModel();
             ComparisonVm = new PduTypeComparisonViewModel();
@@ -161,16 +189,19 @@ namespace DISTestKit.ViewModel
                 SelectedPeriod = Period.Today;
                 IsPlaying = false; // Ensure we're in paused mode for aggregated data
                 VolumeVm.Clear(); // Clear data first
+                LoadDateFromCache();
                 _ = LoadOnceAsync();
             });
             WeekCommand = new RelayCommand(() =>
             {
                 SelectedPeriod = Period.Week;
+                LoadDateFromCache();
                 _ = LoadOnceAsync();
             });
             MonthCommand = new RelayCommand(() =>
             {
                 SelectedPeriod = Period.Month;
+                LoadDateFromCache();
                 _ = LoadOnceAsync();
             });
 
@@ -186,6 +217,108 @@ namespace DISTestKit.ViewModel
             _timer.Elapsed += async (_, __) => await OnTickAsync();
             _lastTimestamp = 0;
             IsPlaying = true;
+
+            // Load user session data
+            _ = LoadUserSessionAsync();
+        }
+
+        private async Task LoadUserSessionAsync()
+        {
+            try
+            {
+                // Always call API when dashboard first loads
+                var profile = await _userService.GetUserProfileAsync();
+                if (profile != null)
+                {
+                    _userId = profile.UserId;
+                    _userName = profile.Email;
+                    // Cache the profile for other pages
+                    UserSessionCache.SetUserProfile(profile);
+                }
+
+                var session = await _userService.GetUserSessionAsync();
+                if (session != null)
+                {
+                    _name = session.Name;
+                    // Cache the session for other pages
+                    UserSessionCache.SetUserSession(session);
+
+                    // Update the MainWindow's UserName display
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        var mainWindow = App.Current.MainWindow as MainWindow;
+                        if (mainWindow != null)
+                        {
+                            mainWindow.UserName = _name;
+                        }
+                    });
+                }
+            }
+            catch
+            {
+                // Failed to load user session, continue with default behavior
+            }
+        }
+
+        private void LoadDateFromCache()
+        {
+            try
+            {
+                // Load the last selected date from cache (no API call)
+                var session = UserSessionCache.GetUserSession();
+                if (session != null && DateTime.TryParse(session.LastSession.Date, out var lastDate))
+                {
+                    _isLoadingFromCache = true;
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        SelectedDate = lastDate;
+                    });
+                    _isLoadingFromCache = false;
+                }
+            }
+            catch
+            {
+                // If cache loading fails, keep current date
+            }
+        }
+
+        private async Task SaveUserSessionAsync(string view)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_userId))
+                    return;
+
+                var lastSession = new LastSession(
+                    Date: SelectedDate.ToString("o"),
+                    View: view
+                );
+
+                var request = new SaveUserSessionRequest(
+                    UserId: _userId,
+                    UserName: _userName,
+                    Name: _name,
+                    LastSession: lastSession
+                );
+
+                var success = await _userService.SaveUserSessionAsync(request);
+
+                // Update cache after successful save
+                if (success)
+                {
+                    var updatedSession = new UserSession(
+                        UserId: _userId,
+                        UserName: _userName,
+                        Name: _name,
+                        LastSession: lastSession
+                    );
+                    UserSessionCache.SetUserSession(updatedSession);
+                }
+            }
+            catch
+            {
+                // Failed to save user session, continue silently
+            }
         }
 
         public async Task LoadOnceAsync()

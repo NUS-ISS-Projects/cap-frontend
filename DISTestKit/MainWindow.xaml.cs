@@ -8,16 +8,35 @@ using DISTestKit.Services;
 
 namespace DISTestKit
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, System.ComponentModel.INotifyPropertyChanged
     {
         private DispatcherTimer? _timeTimer;
+        private string _userName = "User";
+
+        public string UserName
+        {
+            get => _userName;
+            set
+            {
+                _userName = value;
+                OnPropertyChanged(nameof(UserName));
+            }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
 
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = this;
             SetRobotIcon();
             InitializeTimer();
-            
+
             // Check if user has a valid token
             if (TokenManager.HasValidToken())
             {
@@ -112,6 +131,21 @@ namespace DISTestKit
         {
             SideNavPanel.Visibility = Visibility.Visible;
             MainContent.Content = new DashboardPage();
+            UpdateUserName();
+        }
+
+        private void UpdateUserName()
+        {
+            // Try to get the name from cache
+            var session = UserSessionCache.GetUserSession();
+            if (session != null && !string.IsNullOrEmpty(session.Name))
+            {
+                UserName = session.Name;
+            }
+            else
+            {
+                UserName = "User";
+            }
         }
 
         public void ShowForecast()
@@ -137,6 +171,7 @@ namespace DISTestKit
         public void Logout()
         {
             TokenManager.ClearToken();
+            UserSessionCache.Clear();
             ShowLogin();
         }
     }

@@ -50,6 +50,7 @@
 
                 <DatePicker x:Name="DatePicker"
                     SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                    IsEnabled="{Binding IsDatePickerEnabled}"
                     Margin="0,0,10,0"
                     Height="60"
                     Width="250"

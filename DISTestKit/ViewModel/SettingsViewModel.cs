@@ -2,14 +2,17 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using DISTestKit.Model;
+using DISTestKit.Services;
 
 namespace DISTestKit.ViewModel
 {
     public class SettingsViewModel : INotifyPropertyChanged
     {
+        private readonly UserService _userService;
+        private string _userId = "";
         private string _name = "";
         private string _email = "";
-        private string _password = "";
 
         public string Name
         {
@@ -31,46 +34,128 @@ namespace DISTestKit.ViewModel
             }
         }
 
-        public string Password
-        {
-            get => _password;
-            set
-            {
-                _password = value;
-                OnPropertyChanged(nameof(Password));
-            }
-        }
-
         public ICommand SaveCommand { get; }
 
         public SettingsViewModel()
         {
-            // load existing settings from somewhere…
-            LoadExisting();
+            _userService = new UserService("http://34.142.158.178/api/");
+            // Load existing settings from cache or backend
+            _ = LoadExistingAsync();
 
             SaveCommand = new RelayCommand(async () => await SaveAsync());
         }
 
-        private void LoadExisting()
+        private async Task LoadExistingAsync()
         {
-            // TODO: fetch from local storage or HTTP backend
-            Name = "Cindy";
-            Email = "cindy@example.com";
+            try
+            {
+                // First try to load from cache
+                if (UserSessionCache.HasData())
+                {
+                    var profile = UserSessionCache.GetUserProfile();
+                    if (profile != null)
+                    {
+                        _userId = profile.UserId;
+                        Email = profile.Email;
+                    }
+
+                    var session = UserSessionCache.GetUserSession();
+                    if (session != null)
+                    {
+                        Name = session.Name ?? "";
+                    }
+                }
+                else
+                {
+                    // If cache is empty, fetch from API
+                    var profile = await _userService.GetUserProfileAsync();
+                    if (profile != null)
+                    {
+                        _userId = profile.UserId;
+                        Email = profile.Email;
+                        UserSessionCache.SetUserProfile(profile);
+                    }
+
+                    var session = await _userService.GetUserSessionAsync();
+                    if (session != null)
+                    {
+                        Name = session.Name ?? "";
+                        UserSessionCache.SetUserSession(session);
+                    }
+                }
+            }
+            catch
+            {
+                // Failed to load user profile, user may not be logged in
+            }
         }
 
         private async Task SaveAsync()
         {
-            // TODO: push Name/Email/Password to your API
-            // e.g. await _settingsService.UpdateAsync(Name, Email, Password);
+            try
+            {
+                // Save user session with current name
+                var lastSession = new LastSession(
+                    Date: DateTime.UtcNow.ToString("o"),
+                    View: "dashboard"
+                );
 
-            // simulate:
-            await Task.Delay(200);
-            System.Windows.MessageBox.Show(
-                "Settings saved!",
-                "Success",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Information
-            );
+                var request = new SaveUserSessionRequest(
+                    UserId: _userId,
+                    UserName: Email,
+                    Name: Name,
+                    LastSession: lastSession
+                );
+
+                var success = await _userService.SaveUserSessionAsync(request);
+
+                if (success)
+                {
+                    // Update cache after successful save
+                    var updatedSession = new UserSession(
+                        UserId: _userId,
+                        UserName: Email,
+                        Name: Name,
+                        LastSession: lastSession
+                    );
+                    UserSessionCache.SetUserSession(updatedSession);
+
+                    // Update the MainWindow's UserName display
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var mainWindow = System.Windows.Application.Current.MainWindow as MainWindow;
+                        if (mainWindow != null)
+                        {
+                            mainWindow.UserName = Name;
+                        }
+                    });
+
+                    System.Windows.MessageBox.Show(
+                        "Settings saved!",
+                        "Success",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Information
+                    );
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show(
+                        "Failed to save settings. Please try again.",
+                        "Error",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Error
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Error saving settings: {ex.Message}",
+                    "Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error
+                );
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
