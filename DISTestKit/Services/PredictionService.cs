@@ -29,10 +29,19 @@ namespace DISTestKit.Services
         );
 
         public record PredictionResponse(
-            PredictionMetadata metadata,
-            List<string> predicted_labels,
-            List<double> predicted_values
-        );
+            PredictionMetadata? metadata,
+            List<string>? predicted_labels,
+            List<double>? predicted_values,
+            string? error = null,
+            string? details = null
+        )
+        {
+            public bool HasError => !string.IsNullOrEmpty(error);
+            public bool IsInsufficientData =>
+                predicted_values == null
+                || predicted_values.Count == 0
+                || predicted_values.All(v => v == 0.0);
+        };
 
         public record ChatRequest(string question, string sessionId);
 
@@ -46,24 +55,25 @@ namespace DISTestKit.Services
         /// <summary>
         /// POST /api/prediction
         /// </summary>
-        public async Task<PredictionResponse> GetPredictionAsync(
-            string timeUnit,
-            string startDate
-        )
+        public async Task<PredictionResponse> GetPredictionAsync(string timeUnit, string startDate)
         {
             var request = new PredictionRequest(timeUnit, startDate);
             var response = await _http.PostAsJsonAsync("prediction", request);
 
-            if (!response.IsSuccessStatusCode)
+            // Try to parse response regardless of status code
+            var result = await response.Content.ReadFromJsonAsync<PredictionResponse>();
+
+            if (result == null)
             {
-                throw new InvalidOperationException(
-                    $"Prediction API failed with status {response.StatusCode}"
+                // Return error response if parsing failed
+                return new PredictionResponse(
+                    null,
+                    null,
+                    null,
+                    "Unable to parse prediction response",
+                    $"HTTP Status: {response.StatusCode}"
                 );
             }
-
-            var result = await response.Content.ReadFromJsonAsync<PredictionResponse>();
-            if (result == null)
-                throw new InvalidOperationException("Prediction API returned no data.");
 
             return result;
         }

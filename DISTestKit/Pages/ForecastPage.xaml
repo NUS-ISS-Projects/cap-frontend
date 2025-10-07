@@ -54,14 +54,46 @@
         </StackPanel>
 
         <!-- Volume chart -->
-        <lvc:CartesianChart
-          Grid.Row="1" Grid.Column="0"
-          Series="{Binding VolumeSeries}"
-          XAxes="{Binding VolumeXAxes}"
-          YAxes="{Binding VolumeYAxes}"
-          AnimationsSpeed="0:0:0"
-          EasingFunction="{x:Null}"
-          Background="White" />
+        <Grid Grid.Row="1" Grid.Column="0">
+            <lvc:CartesianChart
+              Series="{Binding VolumeSeries}"
+              XAxes="{Binding VolumeXAxes}"
+              YAxes="{Binding VolumeYAxes}"
+              AnimationsSpeed="0:0:0"
+              EasingFunction="{x:Null}"
+              Background="White" />
+
+            <!-- Insufficient Data Warning Overlay -->
+            <Border Background="#F8F9FA"
+                    BorderBrush="#E1E1E1"
+                    BorderThickness="2"
+                    CornerRadius="8"
+                    Padding="40"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding ShowInsufficientDataWarning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="Warning20"
+                                   Width="48"
+                                   Height="48"
+                                   Foreground="#FFA500"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,16"/>
+                    <TextBlock Text="Insufficient Data"
+                               FontWeight="Bold"
+                               FontSize="18"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding InsufficientDataMessage}"
+                               FontSize="14"
+                               Foreground="#6C757D"
+                               TextWrapping="Wrap"
+                               MaxWidth="400"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- AI Chat Interface -->
         <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"

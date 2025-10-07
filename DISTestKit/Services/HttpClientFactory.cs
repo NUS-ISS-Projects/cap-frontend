@@ -12,6 +12,14 @@ namespace DISTestKit.Services
         private static bool _isHandlingExpiration = false;
         private static readonly object _lock = new object();
 
+        public static void ResetExpirationFlag()
+        {
+            lock (_lock)
+            {
+                _isHandlingExpiration = false;
+            }
+        }
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken
@@ -41,18 +49,17 @@ namespace DISTestKit.Services
                         var mainWindow = Application.Current.MainWindow as MainWindow;
                         if (mainWindow != null)
                         {
-                            MessageBox.Show(
-                                "Your session has expired. Please log in again.",
-                                "Session Expired",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Information
-                            );
-                            mainWindow.ShowLogin();
-
-                            // Reset the flag after showing login page
-                            lock (_lock)
+                            // Check if we're not already on the login page
+                            var currentContent = mainWindow.MainContent?.Content;
+                            if (currentContent is not DISTestKit.Pages.LoginPage)
                             {
-                                _isHandlingExpiration = false;
+                                MessageBox.Show(
+                                    "Your session has expired. Please log in again.",
+                                    "Session Expired",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Information
+                                );
+                                mainWindow.ShowLogin();
                             }
                         }
                     });

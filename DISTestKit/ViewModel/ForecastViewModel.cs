@@ -40,6 +40,29 @@ namespace DISTestKit.ViewModel
         public double TotalVolumeLastMinute { get; private set; }
         public double AverageVolumePerSecond { get; private set; }
 
+        // Error/warning display
+        private bool _showInsufficientDataWarning = false;
+        public bool ShowInsufficientDataWarning
+        {
+            get => _showInsufficientDataWarning;
+            set
+            {
+                _showInsufficientDataWarning = value;
+                OnPropertyChanged(nameof(ShowInsufficientDataWarning));
+            }
+        }
+
+        private string _insufficientDataMessage = "";
+        public string InsufficientDataMessage
+        {
+            get => _insufficientDataMessage;
+            set
+            {
+                _insufficientDataMessage = value;
+                OnPropertyChanged(nameof(InsufficientDataMessage));
+            }
+        }
+
         // date/time selection
         private DateTime _selectedDate = DateTime.Today;
         public DateTime SelectedDate
@@ -145,39 +168,22 @@ namespace DISTestKit.ViewModel
             // Ensure SelectedDate is set to today's date
             _selectedDate = DateTime.Today;
 
-            // build chart series
-            var historicalVals = new ObservableCollection<DateTimePoint>();
+            // build chart series - only show predictions
             var predictedVals = new ObservableCollection<DateTimePoint>();
             VolumeSeries = new ObservableCollection<ISeries>
             {
                 new LineSeries<DateTimePoint>
                 {
-                    Name = "Historical Data",
-                    Values = historicalVals,
-                    Stroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 2),
-                    Fill = null,
-                    GeometryFill = new SolidColorPaint(SKColor.Parse("#5084DD")),
-                    GeometryStroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 1),
-                    GeometrySize = 4,
-                    LineSmoothness = 0.8,
-                    Mapping = static (point, index) =>
-                        new LiveChartsCore.Kernel.Coordinate(
-                            point.DateTime.Ticks,
-                            point.Value ?? 0
-                        ),
-                },
-                new LineSeries<DateTimePoint>
-                {
                     Name = "AI Prediction",
                     Values = predictedVals,
-                    Stroke = new SolidColorPaint(SKColor.Parse("#FF6B35"), 2)
+                    Stroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 3)
                     {
                         PathEffect = new DashEffect(new float[] { 10f, 5f }),
                     },
                     Fill = null,
-                    GeometryFill = new SolidColorPaint(SKColor.Parse("#FF6B35")),
-                    GeometryStroke = new SolidColorPaint(SKColor.Parse("#FF6B35"), 1),
-                    GeometrySize = 4,
+                    GeometryFill = new SolidColorPaint(SKColor.Parse("#5084DD")),
+                    GeometryStroke = new SolidColorPaint(SKColor.Parse("#5084DD"), 1),
+                    GeometrySize = 6,
                     LineSmoothness = 0.8,
                     Mapping = static (point, index) =>
                         new LiveChartsCore.Kernel.Coordinate(
@@ -217,23 +223,11 @@ namespace DISTestKit.ViewModel
             if (_selectedPeriod == Period.None)
                 return;
 
-            // Clear existing data from both series
+            // Clear existing prediction data
             if (VolumeSeries.Count > 0)
             {
-                // Clear historical data
                 if (
-                    VolumeSeries[0] is LineSeries<DateTimePoint> historicalSeries
-                    && historicalSeries.Values
-                        is ObservableCollection<DateTimePoint> historicalValues
-                )
-                {
-                    historicalValues.Clear();
-                }
-
-                // Clear prediction data
-                if (
-                    VolumeSeries.Count > 1
-                    && VolumeSeries[1] is LineSeries<DateTimePoint> predictedSeries
+                    VolumeSeries[0] is LineSeries<DateTimePoint> predictedSeries
                     && predictedSeries.Values is ObservableCollection<DateTimePoint> predictedValues
                 )
                 {
@@ -244,10 +238,7 @@ namespace DISTestKit.ViewModel
             // Configure chart based on selected period
             ConfigureChartForPeriod();
 
-            // Fetch actual data from API
-            await LoadHistoricalDataFromAPI();
-
-            // Add prediction data from API
+            // Load only prediction data from API
             await LoadPredictionDataFromAPI();
         }
 
@@ -261,10 +252,10 @@ namespace DISTestKit.ViewModel
             switch (_selectedPeriod)
             {
                 case Period.Today:
-                    // Configure for hourly data over 24 hours
+                    // Configure for hourly data over 24 hours + forecast
                     VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("HH:mm");
                     VolumeXAxes[0].MinLimit = _selectedDate.Ticks;
-                    VolumeXAxes[0].MaxLimit = _selectedDate.AddDays(1).Ticks;
+                    VolumeXAxes[0].MaxLimit = _selectedDate.AddDays(2).Ticks; // Extended to show next day forecast
                     VolumeXAxes[0].UnitWidth = TimeSpan.FromHours(1).Ticks;
                     break;
 
@@ -310,109 +301,6 @@ namespace DISTestKit.ViewModel
             }
         }
 
-        private async Task LoadHistoricalDataFromAPI()
-        {
-            if (VolumeSeries.Count < 1)
-                return;
-
-            var historicalSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
-            if (
-                historicalSeries?.Values is not ObservableCollection<DateTimePoint> historicalValues
-            )
-                return;
-
-            try
-            {
-                DateTime? apiStartDate = null;
-
-                if (_selectedPeriod == Period.Week)
-                {
-                    // For week view, backend expects the end day of the 7‑day window as startDate
-                    // e.g. startDate=2025-09-21 returns buckets from 2025-09-15..2025-09-21
-                    apiStartDate = _selectedDate.Date;
-                }
-                else if (_selectedPeriod == Period.Month)
-                {
-                    // For month view, use the first day of the selected month
-                    apiStartDate = new DateTime(_selectedDate.Year, _selectedDate.Month, 1);
-                }
-
-                var agg = await _aggregationSvc.GetAggregateAsync(
-                    today: _selectedPeriod == Period.Today,
-                    week: _selectedPeriod == Period.Week,
-                    month: _selectedPeriod == Period.Month,
-                    startDate: apiStartDate
-                );
-
-                var weekIndex = 0;
-                foreach (var bucket in agg.Buckets)
-                {
-                    DateTime when = agg.TimeUnit switch
-                    {
-                        "hour" => _selectedDate.AddHours(bucket.Hour ?? 0),
-                        "day" => DateTime.Parse(bucket.Date!),
-                        "week" => GetWeekStartDate(bucket.Week, agg.Start, weekIndex),
-                        _ => _selectedDate,
-                    };
-
-                    if (agg.TimeUnit == "week")
-                        weekIndex++;
-
-                    // Only add points with actual data (TotalPackets > 0) or if it's not a week view
-                    // For week view, we want to show all data points to see the timeline properly
-                    App.Current.Dispatcher.Invoke(() =>
-                    {
-                        historicalValues.Add(new DateTimePoint(when, bucket.TotalPackets));
-                    });
-                }
-
-                App.Current.Dispatcher.Invoke(() =>
-                {
-                    // Align X axis to API range and include forecast horizon when on week view
-                    if (_selectedPeriod == Period.Week && VolumeXAxes?.Length > 0)
-                    {
-                        if (
-                            DateTime.TryParse(agg.Start, out var aggStart)
-                            && DateTime.TryParse(agg.End, out var aggEnd)
-                        )
-                        {
-                            var forecastEnd = _selectedDate.AddDays(6);
-                            VolumeXAxes[0].Labeler = v => new DateTime((long)v).ToString("MM/dd");
-                            VolumeXAxes[0].MinLimit = aggStart.AddHours(-12).Ticks;
-                            VolumeXAxes[0].MaxLimit = forecastEnd.AddHours(12).Ticks;
-                            VolumeXAxes[0].UnitWidth = TimeSpan.FromDays(1).Ticks;
-                        }
-                    }
-
-                    UpdateYAxisBasedOnData();
-                });
-            }
-            catch { }
-        }
-
-        private static DateTime GetWeekStartDate(string? weekString, string apiStart, int weekIndex)
-        {
-            // Parse week string format: "Week 1 (2025-09-21 to 2025-09-27)"
-            if (!string.IsNullOrEmpty(weekString))
-            {
-                var openParen = weekString.IndexOf('(');
-                var toIndex = weekString.IndexOf(" to ");
-
-                if (openParen > 0 && toIndex > openParen)
-                {
-                    var startDateStr = weekString.Substring(openParen + 1, toIndex - openParen - 1);
-                    if (DateTime.TryParse(startDateStr, out DateTime weekStart))
-                        return weekStart;
-                }
-            }
-
-            // Fallback to calculating from API start date
-            if (DateTime.TryParse(apiStart, out DateTime apiStartDate))
-                return apiStartDate.AddDays(weekIndex * 7);
-
-            return DateTime.Today.AddDays(weekIndex * 7);
-        }
-
         private static DateTime GetWeekStart(DateTime date)
         {
             // Get the start of the week (Monday)
@@ -423,18 +311,16 @@ namespace DISTestKit.ViewModel
 
         private async Task LoadPredictionDataFromAPI()
         {
-            if (VolumeSeries.Count < 2)
+            if (VolumeSeries.Count < 1)
                 return;
 
-            var historicalSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
-            var predictedSeries = VolumeSeries[1] as LineSeries<DateTimePoint>;
+            var predictedSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
 
-            if (
-                historicalSeries?.Values is not ObservableCollection<DateTimePoint> historicalValues
-                || predictedSeries?.Values
-                    is not ObservableCollection<DateTimePoint> predictedValues
-            )
+            if (predictedSeries?.Values is not ObservableCollection<DateTimePoint> predictedValues)
                 return;
+
+            // Reset warning state
+            ShowInsufficientDataWarning = false;
 
             try
             {
@@ -445,21 +331,20 @@ namespace DISTestKit.ViewModel
                 switch (_selectedPeriod)
                 {
                     case Period.Today:
-                        timeUnit = "hour";
-                        startDate = _selectedDate.ToString("yyyy-MM-dd");
-                        break;
-                    case Period.Week:
                         timeUnit = "day";
                         startDate = _selectedDate.ToString("yyyy-MM-dd");
                         break;
-                    case Period.Month:
+                    case Period.Week:
                         timeUnit = "week";
-                        startDate = new DateTime(_selectedDate.Year, _selectedDate.Month, 1)
-                            .ToString("yyyy-MM-dd");
+                        startDate = _selectedDate.ToString("yyyy-MM-dd");
                         break;
-                    case Period.Year:
+                    case Period.Month:
                         timeUnit = "month";
-                        startDate = new DateTime(_selectedDate.Year, 1, 1).ToString("yyyy-MM-dd");
+                        startDate = new DateTime(
+                            _selectedDate.Year,
+                            _selectedDate.Month,
+                            1
+                        ).ToString("yyyy-MM-dd");
                         break;
                     default:
                         return;
@@ -468,65 +353,79 @@ namespace DISTestKit.ViewModel
                 // Call the prediction API
                 var prediction = await _predictionSvc.GetPredictionAsync(timeUnit, startDate);
 
-                // Add connecting point from last historical data
-                var lastHistoricalValue = historicalValues.LastOrDefault()?.Value ?? 0;
-                var lastHistoricalTime = historicalValues.LastOrDefault()?.DateTime ?? _selectedDate;
-
-                if (historicalValues.Count > 0 && lastHistoricalValue > 0)
+                // Check for errors or insufficient data
+                if (prediction.HasError)
                 {
                     App.Current.Dispatcher.Invoke(() =>
                     {
-                        predictedValues.Add(
-                            new DateTimePoint(lastHistoricalTime, lastHistoricalValue)
-                        );
+                        ShowInsufficientDataWarning = true;
+                        InsufficientDataMessage =
+                            prediction.details ?? "Unable to generate predictions";
                     });
+                    return;
+                }
+
+                if (prediction.IsInsufficientData)
+                {
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        ShowInsufficientDataWarning = true;
+                        InsufficientDataMessage =
+                            "Not enough data available to generate forecast for this period";
+                    });
+                    return;
+                }
+
+                // Ensure we have valid data
+                if (prediction.predicted_labels == null || prediction.predicted_values == null)
+                {
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        ShowInsufficientDataWarning = true;
+                        InsufficientDataMessage = "Invalid prediction data received";
+                    });
+                    return;
                 }
 
                 // Parse and add prediction data
+                DateTime baseDate = _selectedDate.Date;
+                TimeSpan? previousTime = null;
+
                 for (int i = 0; i < prediction.predicted_labels.Count; i++)
                 {
                     DateTime predictionTime;
                     double predictionValue = prediction.predicted_values[i];
 
                     // Parse the label based on time unit
-                    if (timeUnit == "hour")
+                    if (timeUnit == "day")
                     {
-                        // Label format: "HH:mm"
+                        // For day timeUnit, labels are "HH:mm" format
                         if (TimeSpan.TryParse(prediction.predicted_labels[i], out var timeOfDay))
                         {
-                            predictionTime = _selectedDate.Date + timeOfDay;
+                            // Start predictions from the next day
+                            if (i == 0)
+                            {
+                                baseDate = _selectedDate.Date.AddDays(1);
+                            }
+
+                            // Check if time wrapped around (e.g., from 23:00 to 00:00)
+                            if (previousTime.HasValue && timeOfDay < previousTime.Value)
+                            {
+                                baseDate = baseDate.AddDays(1);
+                            }
+                            previousTime = timeOfDay;
+
+                            predictionTime = baseDate + timeOfDay;
                         }
                         else
                         {
                             continue; // Skip invalid labels
                         }
                     }
-                    else if (timeUnit == "day" || timeUnit == "week")
+                    else if (timeUnit == "week" || timeUnit == "month")
                     {
-                        // Label format: "yyyy-MM-dd"
-                        if (
-                            DateTime.TryParse(
-                                prediction.predicted_labels[i],
-                                out var parsedDate
-                            )
-                        )
-                        {
-                            predictionTime = parsedDate;
-                        }
-                        else
-                        {
-                            continue; // Skip invalid labels
-                        }
-                    }
-                    else if (timeUnit == "month")
-                    {
-                        // Label format: could be "yyyy-MM" or full date
-                        if (
-                            DateTime.TryParse(
-                                prediction.predicted_labels[i],
-                                out var parsedDate
-                            )
-                        )
+                        // Label format: "yyyy-MM-dd" or full date
+                        if (DateTime.TryParse(prediction.predicted_labels[i], out var parsedDate))
                         {
                             predictionTime = parsedDate;
                         }
@@ -560,34 +459,29 @@ namespace DISTestKit.ViewModel
 
         private void UpdateYAxisBasedOnData()
         {
-            if (VolumeSeries.Count < 2 || VolumeYAxes == null || VolumeYAxes.Length == 0)
+            if (VolumeSeries.Count < 1 || VolumeYAxes == null || VolumeYAxes.Length == 0)
                 return;
 
-            var historicalSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
-            var predictedSeries = VolumeSeries[1] as LineSeries<DateTimePoint>;
+            var predictedSeries = VolumeSeries[0] as LineSeries<DateTimePoint>;
 
-            var historicalValues =
-                historicalSeries?.Values as ObservableCollection<DateTimePoint>
-                ?? new ObservableCollection<DateTimePoint>();
             var predictedValues =
                 predictedSeries?.Values as ObservableCollection<DateTimePoint>
                 ?? new ObservableCollection<DateTimePoint>();
 
-            var allValues = historicalValues.Concat(predictedValues).ToList();
-            if (allValues.Count > 0)
+            if (predictedValues.Count > 0)
             {
-                var maxY = allValues.Max(v => v.Value ?? 0);
+                var maxY = predictedValues.Max(v => v.Value ?? 0);
                 var padding = maxY * 0.2;
 
                 // Ensure minimum scale even when all values are zero or very small
                 if (maxY == 0)
                 {
-                    maxY = 1000; // Default max for empty data
-                    padding = 200;
+                    maxY = 100; // Default max for empty data
+                    padding = 20;
                 }
-                else if (padding < 100)
+                else if (padding < 10)
                 {
-                    padding = 100;
+                    padding = 10;
                 }
 
                 VolumeYAxes[0].MinLimit = 0;

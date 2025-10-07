@@ -35,6 +35,7 @@ namespace DISTestKit.Pages
                 if (result.IsSuccess && result.Token != null)
                 {
                     TokenManager.SetToken(result.Token);
+                    TokenExpirationHandler.ResetExpirationFlag();
                     (Application.Current.MainWindow as MainWindow)!.ShowDashboard();
                 }
                 else
