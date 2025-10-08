@@ -11,13 +11,30 @@ namespace DISTestKit.ViewModel
 {
     public class RelayCommand : ICommand
     {
-        private readonly Action _execute;
+        private readonly Action? _execute;
+        private readonly Func<Task>? _executeAsync;
 
-        public RelayCommand(Action execute) => _execute = execute;
+        public RelayCommand(Action execute)
+        {
+            _execute = execute;
+            _executeAsync = null;
+        }
+
+        public RelayCommand(Func<Task> executeAsync)
+        {
+            _execute = null;
+            _executeAsync = executeAsync;
+        }
 
         public bool CanExecute(object? _) => true;
 
-        public void Execute(object? _) => _execute();
+        public void Execute(object? _)
+        {
+            if (_executeAsync != null)
+                _ = _executeAsync();
+            else
+                _execute?.Invoke();
+        }
 
         public event EventHandler? CanExecuteChanged
         {
@@ -83,7 +100,6 @@ namespace DISTestKit.ViewModel
         // ––– Date/Time Selection ––––––––––––––––––––––––––––––––––––––––
 
         private DateTime _selectedDate = DateTime.Now.Date;
-        private bool _isLoadingFromCache = false;
 
         public DateTime SelectedDate
         {
@@ -94,21 +110,11 @@ namespace DISTestKit.ViewModel
                     return;
                 _selectedDate = value;
                 OnPropertyChanged(nameof(SelectedDate));
-                if (IsPaused)
+                if (IsPaused && SelectedPeriod != Period.None)
                 {
                     _ = LoadOnceAsync();
-                    // Save session when date is selected by user (not when loading from cache)
-                    if (SelectedPeriod != Period.None && !_isLoadingFromCache)
-                    {
-                        string view = SelectedPeriod switch
-                        {
-                            Period.Today => "day",
-                            Period.Week => "week",
-                            Period.Month => "month",
-                            _ => "dashboard",
-                        };
-                        _ = SaveUserSessionAsync(view);
-                    }
+                    _ = SaveUserSessionAsync("dashboard");
+                    _ = LoadAndDisplayLastSelectedDate();
                 }
             }
         }
@@ -171,6 +177,19 @@ namespace DISTestKit.ViewModel
         private string _userId = "";
         private string _userName = "";
         private string _name = "";
+        private string _lastSelectedDateText = "";
+
+        public string LastSelectedDateText
+        {
+            get => _lastSelectedDateText;
+            set
+            {
+                if (_lastSelectedDateText == value)
+                    return;
+                _lastSelectedDateText = value;
+                OnPropertyChanged(nameof(LastSelectedDateText));
+            }
+        }
 
         public MainViewModel()
         {
@@ -184,25 +203,36 @@ namespace DISTestKit.ViewModel
             ComparisonVm = new PduTypeComparisonViewModel();
             LogsVm = new LogViewModel();
             DataVolumeVm = new DataVolumeChartViewModel();
-            TodayCommand = new RelayCommand(() =>
+            TodayCommand = new RelayCommand(async () =>
             {
                 SelectedPeriod = Period.Today;
                 IsPlaying = false; // Ensure we're in paused mode for aggregated data
                 VolumeVm.Clear(); // Clear data first
-                LoadDateFromCache();
-                _ = LoadOnceAsync();
+
+                // Get last selected date from API and display it
+                await LoadAndDisplayLastSelectedDate();
+
+                await LoadOnceAsync();
             });
-            WeekCommand = new RelayCommand(() =>
+            WeekCommand = new RelayCommand(async () =>
             {
                 SelectedPeriod = Period.Week;
-                LoadDateFromCache();
-                _ = LoadOnceAsync();
+                IsPlaying = false;
+
+                // Get last selected date from API and display it
+                await LoadAndDisplayLastSelectedDate();
+
+                await LoadOnceAsync();
             });
-            MonthCommand = new RelayCommand(() =>
+            MonthCommand = new RelayCommand(async () =>
             {
                 SelectedPeriod = Period.Month;
-                LoadDateFromCache();
-                _ = LoadOnceAsync();
+                IsPlaying = false;
+
+                // Get last selected date from API and display it
+                await LoadAndDisplayLastSelectedDate();
+
+                await LoadOnceAsync();
             });
 
             PlayCommand = new RelayCommand(() => IsPlaying = !IsPlaying);
@@ -220,6 +250,9 @@ namespace DISTestKit.ViewModel
 
             // Load user session data
             _ = LoadUserSessionAsync();
+
+            // Load and display last selected date on initialization
+            _ = LoadAndDisplayLastSelectedDate();
         }
 
         private async Task LoadUserSessionAsync()
@@ -232,16 +265,12 @@ namespace DISTestKit.ViewModel
                 {
                     _userId = profile.UserId;
                     _userName = profile.Email;
-                    // Cache the profile for other pages
-                    UserSessionCache.SetUserProfile(profile);
                 }
 
                 var session = await _userService.GetUserSessionAsync();
                 if (session != null)
                 {
-                    _name = session.Name;
-                    // Cache the session for other pages
-                    UserSessionCache.SetUserSession(session);
+                    _name = string.IsNullOrEmpty(session.Name) ? "User" : session.Name;
 
                     // Update the MainWindow's UserName display
                     App.Current.Dispatcher.Invoke(() =>
@@ -260,25 +289,36 @@ namespace DISTestKit.ViewModel
             }
         }
 
-        private void LoadDateFromCache()
+        private async Task LoadAndDisplayLastSelectedDate()
         {
             try
             {
-                // Load the last selected date from cache (no API call)
-                var session = UserSessionCache.GetUserSession();
-                if (session != null && DateTime.TryParse(session.LastSession.Date, out var lastDate))
+                var session = await _userService.GetUserSessionAsync();
+
+                string displayText = "";
+                if (
+                    session?.LastSession?.Date != null
+                    && DateTime.TryParse(session.LastSession.Date, out var lastDate)
+                )
                 {
-                    _isLoadingFromCache = true;
-                    App.Current.Dispatcher.Invoke(() =>
-                    {
-                        SelectedDate = lastDate;
-                    });
-                    _isLoadingFromCache = false;
+                    displayText = $"Last date selected: {lastDate:dd-MM-yyyy}";
                 }
+
+                LastSelectedDateText = displayText;
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    var mainWindow = App.Current.MainWindow as MainWindow;
+                    mainWindow?.UpdateLastSelectedDate(displayText);
+                });
             }
-            catch
+            catch (Exception)
             {
-                // If cache loading fails, keep current date
+                LastSelectedDateText = "";
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    var mainWindow = App.Current.MainWindow as MainWindow;
+                    mainWindow?.UpdateLastSelectedDate("");
+                });
             }
         }
 
@@ -289,10 +329,7 @@ namespace DISTestKit.ViewModel
                 if (string.IsNullOrEmpty(_userId))
                     return;
 
-                var lastSession = new LastSession(
-                    Date: SelectedDate.ToString("o"),
-                    View: view
-                );
+                var lastSession = new LastSession(Date: SelectedDate.ToString("o"), View: view);
 
                 var request = new SaveUserSessionRequest(
                     UserId: _userId,
@@ -301,19 +338,7 @@ namespace DISTestKit.ViewModel
                     LastSession: lastSession
                 );
 
-                var success = await _userService.SaveUserSessionAsync(request);
-
-                // Update cache after successful save
-                if (success)
-                {
-                    var updatedSession = new UserSession(
-                        UserId: _userId,
-                        UserName: _userName,
-                        Name: _name,
-                        LastSession: lastSession
-                    );
-                    UserSessionCache.SetUserSession(updatedSession);
-                }
+                await _userService.SaveUserSessionAsync(request);
             }
             catch
             {

@@ -69,7 +69,21 @@ namespace DISTestKit.Services
                     new MediaTypeWithQualityHeaderValue("application/json")
                 );
 
-                var response = await _http.GetAsync("user-sessions");
+                // First get the user profile to get the userId
+                var profileResponse = await _http.GetAsync("users/profile");
+                if (!profileResponse.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                var profile = await profileResponse.Content.ReadFromJsonAsync<UserProfile>();
+                if (profile == null)
+                {
+                    return null;
+                }
+
+                // Now get the user session using the userId
+                var response = await _http.GetAsync($"user-sessions/{profile.UserId}");
 
                 if (response.IsSuccessStatusCode)
                 {

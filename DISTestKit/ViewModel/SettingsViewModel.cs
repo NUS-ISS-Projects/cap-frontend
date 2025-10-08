@@ -49,44 +49,28 @@ namespace DISTestKit.ViewModel
         {
             try
             {
-                // First try to load from cache
-                if (UserSessionCache.HasData())
+                // First fetch user profile to get userId
+                var profile = await _userService.GetUserProfileAsync();
+                if (profile != null)
                 {
-                    var profile = UserSessionCache.GetUserProfile();
-                    if (profile != null)
-                    {
-                        _userId = profile.UserId;
-                        Email = profile.Email;
-                    }
+                    _userId = profile.UserId;
+                    Email = profile.Email;
 
-                    var session = UserSessionCache.GetUserSession();
-                    if (session != null)
-                    {
-                        Name = session.Name ?? "";
-                    }
-                }
-                else
-                {
-                    // If cache is empty, fetch from API
-                    var profile = await _userService.GetUserProfileAsync();
-                    if (profile != null)
-                    {
-                        _userId = profile.UserId;
-                        Email = profile.Email;
-                        UserSessionCache.SetUserProfile(profile);
-                    }
-
+                    // Then fetch user session using the userId
                     var session = await _userService.GetUserSessionAsync();
-                    if (session != null)
+                    if (session != null && !string.IsNullOrEmpty(session.Name))
                     {
-                        Name = session.Name ?? "";
-                        UserSessionCache.SetUserSession(session);
+                        Name = session.Name;
+                    }
+                    else
+                    {
+                        Name = "User";
                     }
                 }
             }
             catch
             {
-                // Failed to load user profile, user may not be logged in
+                Name = "User";
             }
         }
 
@@ -111,19 +95,11 @@ namespace DISTestKit.ViewModel
 
                 if (success)
                 {
-                    // Update cache after successful save
-                    var updatedSession = new UserSession(
-                        UserId: _userId,
-                        UserName: Email,
-                        Name: Name,
-                        LastSession: lastSession
-                    );
-                    UserSessionCache.SetUserSession(updatedSession);
-
                     // Update the MainWindow's UserName display
                     System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
-                        var mainWindow = System.Windows.Application.Current.MainWindow as MainWindow;
+                        var mainWindow =
+                            System.Windows.Application.Current.MainWindow as MainWindow;
                         if (mainWindow != null)
                         {
                             mainWindow.UserName = Name;

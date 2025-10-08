@@ -40,8 +40,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <StackPanel 
-                Orientation="Horizontal" 
+            <StackPanel
+                Orientation="Horizontal"
                 Grid.Row="0"
                 Grid.ColumnSpan="3"
                 HorizontalAlignment="Right"

@@ -58,18 +58,29 @@
                                Margin="8,0,0,3"/>
                     
                     <!-- Current local time display -->
-                    <TextBlock x:Name="CurrentTimeText" 
-                               Text="12:00:00" 
-                               FontFamily="Arial" 
-                               FontSize="12" 
-                               HorizontalAlignment="Left" 
+                    <TextBlock x:Name="CurrentTimeText"
+                               Text="12:00:00"
+                               FontFamily="Arial"
+                               FontSize="12"
+                               HorizontalAlignment="Left"
                                Margin="8,0,0,0"
                                Foreground="#666666"/>
+
+                    <!-- Last selected date for dashboard -->
+                    <TextBlock x:Name="LastSelectedDateText"
+                               Text=""
+                               FontFamily="Arial"
+                               FontSize="10"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Left"
+                               Margin="8,5,0,0"
+                               Foreground="#999999"
+                               FontStyle="Italic"/>
                 </StackPanel>
                 
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock FontFamily="Arial" FontSize="15" FontWeight="Bold" Margin="0,20,0,20" HorizontalAlignment="Center">
-                        <Run Text="Hello, "/>
+                        <Run Text="Hello,"/>
                         <Run Text="{Binding UserName, Mode=OneWay}"/>
                         <Run Text="!"/>
                     </TextBlock>
