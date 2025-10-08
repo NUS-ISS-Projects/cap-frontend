@@ -298,17 +298,21 @@ namespace DISTestKit.ViewModel
                 string displayText = "";
                 if (
                     session?.LastSession?.Date != null
+                    && !string.IsNullOrEmpty(session.LastSession.View)
                     && DateTime.TryParse(session.LastSession.Date, out var lastDate)
                 )
                 {
-                    displayText = $"Last date selected: {lastDate:dd-MM-yyyy}";
+                    var viewName =
+                        char.ToUpper(session.LastSession.View[0])
+                        + session.LastSession.View.Substring(1);
+                    displayText = $"Last View Session: {viewName}, {lastDate:dd-MM-yyyy}";
                 }
 
                 LastSelectedDateText = displayText;
                 App.Current.Dispatcher.Invoke(() =>
                 {
                     var mainWindow = App.Current.MainWindow as MainWindow;
-                    mainWindow?.UpdateLastSelectedDate(displayText);
+                    mainWindow?.UpdateLastViewSession(displayText);
                 });
             }
             catch (Exception)
@@ -317,7 +321,7 @@ namespace DISTestKit.ViewModel
                 App.Current.Dispatcher.Invoke(() =>
                 {
                     var mainWindow = App.Current.MainWindow as MainWindow;
-                    mainWindow?.UpdateLastSelectedDate("");
+                    mainWindow?.UpdateLastViewSession("");
                 });
             }
         }

@@ -66,8 +66,8 @@
                                Margin="8,0,0,0"
                                Foreground="#666666"/>
 
-                    <!-- Last selected date for dashboard -->
-                    <TextBlock x:Name="LastSelectedDateText"
+                    <!-- Last view session -->
+                    <TextBlock x:Name="LastViewSessionText"
                                Text=""
                                FontFamily="Arial"
                                FontSize="10"

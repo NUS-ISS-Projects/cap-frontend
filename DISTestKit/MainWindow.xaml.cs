@@ -144,6 +144,7 @@ namespace DISTestKit
             SideNavPanel.Visibility = Visibility.Visible;
             MainContent.Content = new DashboardPage();
             UpdateUserName();
+            LoadLastViewSession();
         }
 
         private void UpdateUserName()
@@ -151,12 +152,40 @@ namespace DISTestKit
             UserName = "User";
         }
 
-        public void UpdateLastSelectedDate(string dateText)
+        public void UpdateLastViewSession(string sessionText)
         {
-            var lastSelectedDateTextBlock = this.FindName("LastSelectedDateText") as TextBlock;
-            if (lastSelectedDateTextBlock != null)
+            var lastViewSessionTextBlock = this.FindName("LastViewSessionText") as TextBlock;
+            if (lastViewSessionTextBlock != null)
             {
-                lastSelectedDateTextBlock.Text = dateText;
+                lastViewSessionTextBlock.Text = sessionText;
+            }
+        }
+
+        private async void LoadLastViewSession()
+        {
+            try
+            {
+                var userService = new UserService("http://34.142.158.178/api/");
+                var session = await userService.GetUserSessionAsync();
+
+                if (
+                    session?.LastSession?.Date != null
+                    && !string.IsNullOrEmpty(session.LastSession.View)
+                )
+                {
+                    if (DateTime.TryParse(session.LastSession.Date, out var lastDate))
+                    {
+                        var viewName =
+                            char.ToUpper(session.LastSession.View[0])
+                            + session.LastSession.View.Substring(1);
+                        var displayText = $"Last View Session: {viewName}, {lastDate:dd-MM-yyyy}";
+                        UpdateLastViewSession(displayText);
+                    }
+                }
+            }
+            catch
+            {
+                // Failed to load, keep empty
             }
         }
 

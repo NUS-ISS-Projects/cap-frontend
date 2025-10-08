@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using DISTestKit.Model;
 using DISTestKit.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -73,6 +74,7 @@ namespace DISTestKit.ViewModel
                 _selectedDate = value;
                 OnPropertyChanged(nameof(SelectedDate));
                 _ = RefreshHistoricalAsync();
+                _ = SaveUserSessionAsync();
             }
         }
 
@@ -143,12 +145,20 @@ namespace DISTestKit.ViewModel
         private readonly RealTimeMetricsService _svc;
         private readonly AggregationService _aggregationSvc;
         private readonly PredictionService _predictionSvc;
+        private readonly UserService _userService;
+        private string _userId = "";
+        private string _userName = "";
+        private string _name = "";
 
         public ForecastViewModel(RealTimeMetricsService svc)
         {
             _svc = svc;
             _aggregationSvc = new AggregationService("http://34.142.158.178/api/");
             _predictionSvc = new PredictionService("http://34.142.158.178/api/");
+            _userService = new UserService("http://34.142.158.178/api/");
+
+            // Load user profile data
+            _ = LoadUserProfileAsync();
 
             // Initialize chat functionality
             ChatMessages = new ObservableCollection<ChatMessage>();
@@ -542,6 +552,56 @@ namespace DISTestKit.ViewModel
             {
                 // Fallback message if API call fails
                 return $"I apologize, but I'm having trouble connecting to the analysis service right now. Please try again later. (Error: {ex.Message})";
+            }
+        }
+
+        private async Task LoadUserProfileAsync()
+        {
+            try
+            {
+                var profile = await _userService.GetUserProfileAsync();
+                if (profile != null)
+                {
+                    _userId = profile.UserId;
+                    _userName = profile.Email;
+                }
+
+                var session = await _userService.GetUserSessionAsync();
+                if (session != null)
+                {
+                    _name = string.IsNullOrEmpty(session.Name) ? "User" : session.Name;
+                }
+            }
+            catch
+            {
+                // Failed to load user session, continue with default behavior
+            }
+        }
+
+        private async Task SaveUserSessionAsync()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_userId))
+                    return;
+
+                var lastSession = new LastSession(
+                    Date: SelectedDate.ToString("o"),
+                    View: "forecast"
+                );
+
+                var request = new SaveUserSessionRequest(
+                    UserId: _userId,
+                    UserName: _userName,
+                    Name: _name,
+                    LastSession: lastSession
+                );
+
+                await _userService.SaveUserSessionAsync(request);
+            }
+            catch
+            {
+                // Failed to save user session, continue silently
             }
         }
 
